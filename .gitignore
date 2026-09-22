@@ -1,0 +1,10 @@
+# Ignore local project documentation and rules
+docs/
+
+# Python and Flask standard ignores
+venv/
+__pycache__/
+*.pyc
+.env
+instance/
+.DS_Store
