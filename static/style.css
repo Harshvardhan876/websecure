@@ -1,0 +1,96 @@
+:root {
+    --color-bg: #f8fafc;
+    --color-surface: #fdfdfd;
+    --color-border: #cbd5e1;
+    --color-text: #0f172a;
+    --color-pass: #166534;
+    --color-fail: #991b1b;
+    --color-warning: #854d0e;
+    --color-info: #1e3a8a;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+}
+
+.container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.site-header {
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+}
+
+.site-header .container {
+    padding-top: 16px;
+    padding-bottom: 16px;
+}
+
+.brand {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.scan-panel {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0;
+    padding: 32px;
+    margin-top: 48px;
+}
+
+.scan-panel h1 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+}
+
+.scan-subtitle {
+    margin: 0 0 24px 0;
+    color: var(--color-text);
+}
+
+.scan-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.scan-label {
+    flex-basis: 100%;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.scan-input {
+    flex: 1 1 320px;
+    border: 1px solid var(--color-border);
+    border-radius: 0;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    padding: 10px 12px;
+    font-size: 16px;
+}
+
+.scan-button {
+    border: 1px solid var(--color-text);
+    border-radius: 0;
+    background-color: var(--color-text);
+    color: var(--color-bg);
+    padding: 10px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}

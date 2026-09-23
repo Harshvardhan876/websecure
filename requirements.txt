@@ -1,0 +1,9 @@
+Flask
+Flask-SQLAlchemy
+libsql-client
+python-dotenv
+requests
+urllib3
+fpdf
+Werkzeug
+gunicorn

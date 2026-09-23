@@ -3,6 +3,7 @@ docs/
 
 # Python and Flask standard ignores
 venv/
+.claude/
 __pycache__/
 *.pyc
 .env
