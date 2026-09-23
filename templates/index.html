@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}WebSecure - Security Configuration Scanner{% endblock %}
+
+{% block content %}
+<section class="scan-panel">
+    <h1>Scan a target URL</h1>
+    <p class="scan-subtitle">Passive HTTP header and cookie security assessment.</p>
+
+    <form class="scan-form" action="/scan" method="POST">
+        <label for="target_url" class="scan-label">Target URL</label>
+        <input
+            type="url"
+            id="target_url"
+            name="target_url"
+            class="scan-input"
+            placeholder="https://example.com"
+            required
+        >
+        <button type="submit" class="scan-button">Scan</button>
+    </form>
+</section>
+{% endblock %}
