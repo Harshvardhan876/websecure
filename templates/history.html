@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}WebSecure - Scan History{% endblock %}
+
+{% block content %}
+<section class="scan-panel">
+    <h1>Scan history</h1>
+    <p class="scan-subtitle">Your past scans, newest first.</p>
+
+    {% if scans %}
+    <table class="findings-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Target</th>
+                <th>Score</th>
+                <th>Risk Level</th>
+                <th>Report</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for scan in scans %}
+            <tr>
+                <td>{{ scan.scan_date.strftime("%Y-%m-%d %H:%M") }}</td>
+                <td><a href="/results/{{ scan.scan_id }}">{{ scan.target_url }}</a></td>
+                <td>{{ scan.security_score }}/100</td>
+                <td class="risk-{{ scan.risk_level.split(' ')[0].lower() }}">{{ scan.risk_level }}</td>
+                <td><a href="/report/download/{{ scan.scan_id }}">PDF</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No scans yet. <a href="/">Run your first scan.</a></p>
+    {% endif %}
+</section>
+{% endblock %}

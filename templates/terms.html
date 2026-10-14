@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}WebSecure - Terms of Service{% endblock %}
+
+{% block content %}
+<section class="scan-panel legal-page">
+    <h1>Terms of Service</h1>
+
+    <h2>1. What WebSecure Does</h2>
+    <p>WebSecure is a passive security configuration assessment tool. It sends a single
+    safe HTTP GET request to a URL you provide and inspects the response headers and
+    cookies against a fixed, project-defined checklist. It does not attempt to exploit,
+    brute-force, or otherwise actively probe any target.</p>
+
+    <h2>2. Your Responsibility</h2>
+    <p>You are responsible for only scanning URLs you own or are authorized to test.
+    WebSecure does not verify authorization on your behalf.</p>
+
+    <h2>3. No Warranty</h2>
+    <p>Findings are configuration observations, not proof of an exploitable vulnerability
+    and not an industry-standard vulnerability score. WebSecure is provided as-is, without
+    warranty of any kind.</p>
+
+    <h2>4. Changes</h2>
+    <p>These terms may change as the project evolves. Continued use after a change
+    constitutes acceptance of the updated terms.</p>
+</section>
+{% endblock %}

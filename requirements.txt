@@ -2,7 +2,7 @@ Flask
 Flask-SQLAlchemy
 libsql-client
 python-dotenv
-requests
+playwright
 urllib3
 fpdf
 Werkzeug
