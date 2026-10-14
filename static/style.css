@@ -239,10 +239,15 @@ body {
     font-weight: 700;
 }
 
-.risk-low { color: var(--color-pass); }
-.risk-medium { color: var(--color-warning); }
-.risk-high,
-.risk-critical { color: var(--color-fail); }
+.risk-strong { color: var(--color-pass); }
+.risk-moderate { color: var(--color-warning); }
+.risk-weak,
+.risk-minimal { color: var(--color-fail); }
+
+.score-note {
+    margin-top: 16px;
+    font-size: 14px;
+}
 
 .findings-table {
     width: 100%;

@@ -105,6 +105,10 @@ def main():
     })
     assert scanner.evaluate(perfect, ssl_warning=False)[0] == 100
 
+    # Rating bands: 80 / 60 / 40 boundaries
+    assert [scanner.classify_risk(s) for s in (80, 79, 60, 59, 40, 39)] == [
+        "Strong", "Moderate", "Moderate", "Weak", "Weak", "Minimal"]
+
     print("OK: scanner checks passed")
 
 

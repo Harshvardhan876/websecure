@@ -384,13 +384,14 @@ def evaluate(response, ssl_warning):
 
 
 def classify_risk(score):
+    """Rates header hardening only, so the labels avoid claiming the site is vulnerable."""
     if score >= 80:
-        return "Low Risk"
+        return "Strong"
     if score >= 60:
-        return "Medium Risk"
+        return "Moderate"
     if score >= 40:
-        return "High Risk"
-    return "Critical Risk"
+        return "Weak"
+    return "Minimal"
 
 
 def scan(url):
@@ -408,7 +409,7 @@ def scan(url):
 def _print_report(result):
     print(f"Target:     {result['target_url']}")
     print(f"Score:      {result['security_score']}/100")
-    print(f"Risk Level: {result['risk_level']}")
+    print(f"Hardening:  {result['risk_level']}")
     print("-" * 60)
     for f in result["findings"]:
         print(f"[{f['status']:7}] {f['header_name']} ({f['severity']})")

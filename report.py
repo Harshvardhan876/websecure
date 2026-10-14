@@ -20,7 +20,9 @@ def build_report_pdf(scan):
     pdf.cell(PAGE_WIDTH, 8, _safe(f"Scanned: {scan.scan_date.strftime('%Y-%m-%d %H:%M UTC')}"), ln=1)
 
     pdf.set_font("Helvetica", "B", 13)
-    pdf.cell(PAGE_WIDTH, 10, _safe(f"Score: {scan.security_score}/100  -  {scan.risk_level}"), ln=1)
+    pdf.cell(PAGE_WIDTH, 10, _safe(f"Score: {scan.security_score}/100  -  Header hardening: {scan.risk_level}"), ln=1)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.multi_cell(PAGE_WIDTH, 6, "This score rates the security headers of one page. It is not a full security audit and does not mean the site is vulnerable.")
     pdf.ln(4)
 
     pdf.set_font("Helvetica", "B", 13)
