@@ -3,11 +3,15 @@
 {% block title %}WebSecure - Security Configuration Scanner{% endblock %}
 
 {% block content %}
-<section class="scan-panel">
+<section class="scan-panel" id="scan-panel">
     <h1>Scan a target URL</h1>
     <p class="scan-subtitle">Passive HTTP header and cookie security assessment.</p>
 
-    <form class="scan-form" action="/scan" method="POST">
+    {% if error %}
+    <p class="form-error">{{ error }}</p>
+    {% endif %}
+
+    <form class="scan-form" action="/scan" method="POST" id="scan-form">
         <label for="target_url" class="scan-label">Target URL</label>
         <input
             type="url"
@@ -17,7 +21,57 @@
             placeholder="https://example.com"
             required
         >
-        <button type="submit" class="scan-button">Scan</button>
+        <button type="submit" class="scan-button" id="scan-submit">Scan</button>
     </form>
 </section>
+
+{% if recent_scans %}
+<section class="scan-panel" id="recent-panel">
+    <h2>Recent scans</h2>
+    <table class="findings-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Target</th>
+                <th>Score</th>
+                <th>Hardening</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for scan in recent_scans %}
+            <tr>
+                <td>{{ scan.scan_date.strftime("%Y-%m-%d %H:%M") }}</td>
+                <td><a href="/results/{{ scan.scan_id }}">{{ scan.target_url }}</a></td>
+                <td>{{ scan.security_score }}/100</td>
+                <td class="risk-{{ scan.risk_level.split(' ')[0].lower() }}">{{ scan.risk_level }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="auth-switch"><a href="/history">View full history</a></p>
+</section>
+{% endif %}
+
+<section class="scan-panel skeleton-panel" id="skeleton-panel">
+    <div class="skeleton-line skeleton-line-title"></div>
+    <div class="skeleton-line skeleton-line-short"></div>
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row"></div>
+</section>
+
+<script>
+    document.getElementById("scan-form").addEventListener("submit", function () {
+        document.getElementById("scan-panel").classList.add("is-hidden");
+
+        var recent = document.getElementById("recent-panel");
+        if (recent) {
+            recent.classList.add("is-hidden");
+        }
+
+        document.getElementById("scan-submit").disabled = true;
+        document.getElementById("skeleton-panel").classList.add("is-active");
+    });
+</script>
 {% endblock %}

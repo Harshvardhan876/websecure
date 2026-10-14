@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}WebSecure - Results{% endblock %}
+
+{% block content %}
+<section class="scan-panel">
+    <h1>{{ scan.target_url }}</h1>
+    <p class="scan-subtitle">Scanned {{ scan.scan_date.strftime("%Y-%m-%d %H:%M UTC") }}</p>
+
+    <div class="score-row">
+        <div class="score-box">
+            <span class="score-label">Score</span>
+            <span class="score-value">{{ scan.security_score }}/100</span>
+        </div>
+        <div class="score-box">
+            <span class="score-label">Header Hardening</span>
+            <span class="score-value risk-{{ scan.risk_level.split(' ')[0].lower() }}">{{ scan.risk_level }}</span>
+        </div>
+    </div>
+    <p class="score-note">This score rates the security headers of this one page. It is not a full security audit and does not mean the site is vulnerable.</p>
+
+    <a href="/report/download/{{ scan.scan_id }}" class="scan-button download-button">Download PDF</a>
+</section>
+
+<section class="scan-panel">
+    <h2>Findings</h2>
+    <table class="findings-table">
+        <thead>
+            <tr>
+                <th>Check</th>
+                <th>Status</th>
+                <th>Severity</th>
+                <th>Recommendation</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for finding in scan.findings %}
+            <tr>
+                <td>
+                    <strong>{{ finding.header_name }}</strong>
+                    <div class="finding-description">{{ finding.description }}</div>
+                </td>
+                <td class="status-{{ finding.status.lower() }}">{{ finding.status }}</td>
+                <td>{{ finding.severity }}</td>
+                <td>{{ finding.recommendation }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<a href="/" class="header-link">New scan</a>
+{% endblock %}

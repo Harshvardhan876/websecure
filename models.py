@@ -1,19 +1,32 @@
-"""Scan/Finding models per 02_TRD.md, plus save/retrieve helpers.
-
-Users table is a separate Phase 3 sub-task (login/registration), not yet
-built, so `Scan.user_id` has no ForeignKey constraint yet -- it is added
-once the Users model exists.
-"""
+"""Users/Scan/Finding models per 02_TRD.md, plus save/retrieve helpers."""
 from datetime import datetime, timezone
 
+from werkzeug.security import check_password_hash, generate_password_hash
+
 from db import db
+
+
+class User(db.Model):
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(256), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 
 class Scan(db.Model):
     __tablename__ = "scans"
 
     scan_id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     target_url = db.Column(db.String(255), nullable=False)
     scan_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     security_score = db.Column(db.Integer, nullable=False)
@@ -57,6 +70,32 @@ class Finding(db.Model):
         }
 
 
+class EmailAlreadyRegisteredError(ValueError):
+    pass
+
+
+def create_user(name, email, password):
+    if User.query.filter_by(email=email).first() is not None:
+        raise EmailAlreadyRegisteredError(f"'{email}' is already registered")
+
+    user = User(name=name, email=email)
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+def get_user_by_email(email):
+    return User.query.filter_by(email=email).first()
+
+
+def authenticate(email, password):
+    user = get_user_by_email(email)
+    if user is not None and user.check_password(password):
+        return user
+    return None
+
+
 def save_scan_result(scan_result, user_id=None):
     """Persist a scanner.scan(url) dict as a Scan + its Finding rows."""
     scan = Scan(
@@ -79,3 +118,13 @@ def get_scan_by_id(scan_id):
 
 def get_recent_scans(limit=20):
     return Scan.query.order_by(Scan.scan_date.desc()).limit(limit).all()
+
+
+def get_scans_for_user(user_id, limit=50):
+    """Separate from get_recent_scans so a web route can never return another user's scans."""
+    return (
+        Scan.query.filter_by(user_id=user_id)
+        .order_by(Scan.scan_date.desc())
+        .limit(limit)
+        .all()
+    )
