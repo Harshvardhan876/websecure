@@ -6,7 +6,8 @@
     <title>{% block title %}WebSecure{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
+    {% block header %}
     <header class="site-header">
         <div class="container header-row">
             <span class="brand">WebSecure</span>
@@ -19,6 +20,7 @@
             {% endif %}
         </div>
     </header>
+    {% endblock %}
 
     <main class="container">
         {% block content %}{% endblock %}
