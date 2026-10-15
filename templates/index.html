@@ -1,58 +1,185 @@
-{% extends "base.html" %}
+{% extends "app_base.html" %}
+{% set active = "dashboard" %}
 
-{% block title %}WebSecure - Security Configuration Scanner{% endblock %}
+{% block title %}WebSecure - Dashboard{% endblock %}
+{% block page_title %}Security Dashboard{% endblock %}
+{% block page_subtitle %}{% if user %}Welcome back, {{ user.name }}. {% endif %}Your security header posture at a glance.{% endblock %}
 
-{% block content %}
-<section class="scan-panel" id="scan-panel">
-    <h1>Scan a target URL</h1>
-    <p class="scan-subtitle">Passive HTTP header and cookie security assessment.</p>
+{% block app_content %}
+<section class="dash-card dash-scan" id="scan-panel">
+    <div class="dash-card-head">
+        <h2>Run a scan</h2>
+        <span class="dash-hint">Passive HTTP header and cookie assessment</span>
+    </div>
 
     {% if error %}
-    <p class="form-error">{{ error }}</p>
+    <p class="form-error" role="alert">{{ error }}</p>
     {% endif %}
 
     <form class="scan-form" action="/scan" method="POST" id="scan-form">
-        <label for="target_url" class="scan-label">Target URL</label>
-        <input
-            type="url"
-            id="target_url"
-            name="target_url"
-            class="scan-input"
-            placeholder="https://example.com"
-            required
-        >
+        <label for="target_url" class="visually-hidden">Target URL</label>
+        <input type="url" id="target_url" name="target_url" class="scan-input" placeholder="https://example.com" value="{{ request.form.target_url }}" required>
         <button type="submit" class="scan-button" id="scan-submit">Scan</button>
     </form>
 </section>
 
-{% if recent_scans %}
-<section class="scan-panel" id="recent-panel">
-    <h2>Recent scans</h2>
-    <table class="findings-table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Target</th>
-                <th>Score</th>
-                <th>Hardening</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for scan in recent_scans %}
-            <tr>
-                <td>{{ scan.scan_date.strftime("%Y-%m-%d %H:%M") }}</td>
-                <td><a href="/results/{{ scan.scan_id }}">{{ scan.target_url }}</a></td>
-                <td>{{ scan.security_score }}/100</td>
-                <td class="risk-{{ scan.risk_level.split(' ')[0].lower() }}">{{ scan.risk_level }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <p class="auth-switch"><a href="/history">View full history</a></p>
-</section>
-{% endif %}
+<div id="dashboard-body">
+{% if stats %}
+    {% set latest = stats.latest %}
+    {% set band = latest.risk_level.split(' ')[0].lower() %}
 
-<section class="scan-panel skeleton-panel" id="skeleton-panel">
+    <div class="dash-stats">
+        <div class="dash-card dash-stat" style="--i: 0">
+            <span class="dash-stat-label">Latest score</span>
+            <span class="dash-stat-value"><span data-count="{{ latest.security_score }}">{{ latest.security_score }}</span><small>/100</small></span>
+            <span class="dash-stat-foot">
+                {% if stats.delta is not none %}
+                <span class="dash-chip {{ 'is-up' if stats.delta > 0 else 'is-down' if stats.delta < 0 else '' }}">{{ '+' if stats.delta > 0 }}{{ stats.delta }}</span>
+                vs previous scan
+                {% else %}First scan{% endif %}
+            </span>
+        </div>
+        <div class="dash-card dash-stat" style="--i: 1">
+            <span class="dash-stat-label">Average score</span>
+            <span class="dash-stat-value"><span data-count="{{ stats.average }}">{{ stats.average }}</span><small>/100</small></span>
+            <span class="dash-stat-foot">Across all your scans</span>
+        </div>
+        <div class="dash-card dash-stat" style="--i: 2">
+            <span class="dash-stat-label">Total scans</span>
+            <span class="dash-stat-value"><span data-count="{{ stats.total }}">{{ stats.total }}</span></span>
+            <span class="dash-stat-foot">Saved to your account</span>
+        </div>
+        <div class="dash-card dash-stat" style="--i: 3">
+            <span class="dash-stat-label">Sites scanned</span>
+            <span class="dash-stat-value"><span data-count="{{ stats.sites }}">{{ stats.sites }}</span></span>
+            <span class="dash-stat-foot">Unique hosts</span>
+        </div>
+    </div>
+
+    <div class="dash-row dash-row-gauge">
+        <section class="dash-card" style="--i: 4">
+            <div class="dash-card-head">
+                <h2>Latest scan</h2>
+                <a href="/results/{{ latest.scan_id }}" class="dash-link">View report</a>
+            </div>
+            <div class="gauge tone-{{ band }}" style="--score: {{ latest.security_score }}">
+                <svg viewBox="0 0 240 140" aria-hidden="true">
+                    <path d="M20 120a100 100 0 0 1 200 0" pathLength="100" class="gauge-track"/>
+                    <path d="M20 120a100 100 0 0 1 200 0" pathLength="100" class="gauge-fill"/>
+                    <path d="M20 120h10M210 120h10M120 20v10M49.3 49.3l7 7M190.7 49.3l-7 7" class="gauge-ticks"/>
+                    <g class="gauge-needle">
+                        <line x1="120" y1="120" x2="120" y2="42"/>
+                        <circle cx="120" cy="120" r="7"/>
+                    </g>
+                </svg>
+                <div class="gauge-readout">
+                    <span class="gauge-score"><span data-count="{{ latest.security_score }}">{{ latest.security_score }}</span>/100</span>
+                    <span class="gauge-rating">{{ latest.risk_level }}</span>
+                </div>
+            </div>
+            <p class="gauge-target" title="{{ latest.target_url }}">{{ latest.target_url }}</p>
+        </section>
+
+        <section class="dash-card" style="--i: 5">
+            <div class="dash-card-head">
+                <h2>Findings in latest scan</h2>
+                <span class="dash-hint">{{ stats.finding_total }} checks</span>
+            </div>
+            <div class="rings">
+                {% for label, count, tone in stats.breakdown %}
+                <div class="ring tone-{{ tone }}" style="--pct: {{ (100 * count / (stats.finding_total or 1)) | round(1) }}">
+                    <svg viewBox="0 0 100 100" aria-hidden="true">
+                        <circle cx="50" cy="50" r="40" class="ring-track"/>
+                        <circle cx="50" cy="50" r="40" pathLength="100" class="ring-fill"/>
+                    </svg>
+                    <span class="ring-center"><strong data-count="{{ count }}">{{ count }}</strong><span>of {{ stats.finding_total }}</span></span>
+                    <span class="ring-label">{{ label }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <div class="dash-row dash-row-trend">
+        <section class="dash-card" style="--i: 6">
+            <div class="dash-card-head">
+                <h2>Score trend</h2>
+                <span class="dash-hint">Last {{ stats.trend | length }} scans</span>
+            </div>
+            <div class="trend">
+                <div class="trend-axis" aria-hidden="true"><span>100</span><span>50</span><span>0</span></div>
+                <div class="trend-bars">
+                    {% for scan in stats.trend %}
+                    <a class="trend-bar" href="/results/{{ scan.scan_id }}" title="{{ scan.target_url }}: {{ scan.security_score }}/100">
+                        <span class="trend-track">
+                            <span class="trend-fill tone-{{ scan.risk_level.split(' ')[0].lower() }}" style="height: {{ [scan.security_score, 2] | max }}%; --i: {{ loop.index0 }}"></span>
+                        </span>
+                        <span class="trend-label">{{ scan.scan_date.strftime("%d %b") }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="dash-card" style="--i: 7">
+            <div class="dash-card-head">
+                <h2>Most failed checks</h2>
+                <span class="dash-hint">Across {{ stats.total }} scans</span>
+            </div>
+            {% if stats.top_failing %}
+            <ol class="fail-list">
+                {% for name, count, pct in stats.top_failing %}
+                <li>
+                    <span class="fail-name">{{ name }}</span>
+                    <span class="fail-count">{{ count }} of {{ stats.total }}</span>
+                    <span class="fail-bar"><span style="width: {{ pct }}%; --i: {{ loop.index0 }}"></span></span>
+                </li>
+                {% endfor %}
+            </ol>
+            {% else %}
+            <p class="dash-empty-text">No failed checks yet.</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <section class="dash-card" style="--i: 8">
+        <div class="dash-card-head">
+            <h2>Recent scans</h2>
+            <a href="/history" class="dash-link">View all</a>
+        </div>
+        <div class="dash-table-wrap">
+            <table class="dash-table">
+                <thead>
+                    <tr><th>Target</th><th>Date</th><th>Score</th><th>Hardening</th><th>Report</th></tr>
+                </thead>
+                <tbody>
+                    {% for scan in scans %}
+                    {% set row_band = scan.risk_level.split(' ')[0].lower() %}
+                    <tr>
+                        <td><a href="/results/{{ scan.scan_id }}">{{ scan.target_url }}</a></td>
+                        <td>{{ scan.scan_date.strftime("%Y-%m-%d %H:%M") }}</td>
+                        <td>
+                            <span class="score-meter tone-{{ row_band }}"><span style="width: {{ scan.security_score }}%"></span></span>
+                            {{ scan.security_score }}
+                        </td>
+                        <td><span class="dash-pill tone-{{ row_band }}">{{ scan.risk_level }}</span></td>
+                        <td><a href="/report/download/{{ scan.scan_id }}">PDF</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% else %}
+    <section class="dash-card dash-empty">
+        <h2>No scans yet</h2>
+        <p class="dash-empty-text">Enter a URL above to run your first scan. Your scores, findings and trends will appear here.</p>
+    </section>
+{% endif %}
+</div>
+
+<section class="dash-card skeleton-panel" id="skeleton-panel" aria-live="polite">
+    <p class="skeleton-caption"><span class="status-dot" aria-hidden="true"></span>Scanning. Loading the page in a real browser and checking its headers.</p>
     <div class="skeleton-line skeleton-line-title"></div>
     <div class="skeleton-line skeleton-line-short"></div>
     <div class="skeleton-row"></div>
@@ -62,16 +189,34 @@
 </section>
 
 <script>
+(function () {
+    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Count numbers up from 0. The final value is already in the HTML, so nothing breaks without JS.
+    if (!reduceMotion) {
+        document.querySelectorAll("[data-count]").forEach(function (el) {
+            var target = Number(el.dataset.count);
+            var start = performance.now();
+            el.textContent = "0";
+            (function tick(now) {
+                var t = Math.min((now - start) / 900, 1);
+                el.textContent = Math.round(target * (1 - Math.pow(1 - t, 3)));
+                if (t < 1) requestAnimationFrame(tick);
+            })(start);
+        });
+    }
+
+    // Gauge, rings and bars animate from empty to their value once this class lands.
+    requestAnimationFrame(function () {
+        requestAnimationFrame(function () { document.body.classList.add("is-ready"); });
+    });
+
     document.getElementById("scan-form").addEventListener("submit", function () {
-        document.getElementById("scan-panel").classList.add("is-hidden");
-
-        var recent = document.getElementById("recent-panel");
-        if (recent) {
-            recent.classList.add("is-hidden");
-        }
-
         document.getElementById("scan-submit").disabled = true;
+        document.getElementById("scan-submit").textContent = "Scanning";
+        document.getElementById("dashboard-body").classList.add("is-hidden");
         document.getElementById("skeleton-panel").classList.add("is-active");
     });
+})();
 </script>
 {% endblock %}

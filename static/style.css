@@ -282,3 +282,1255 @@ body {
 
 /* Last rule in the file so it wins over same-specificity layout classes. */
 .is-hidden { display: none; }
+
+/* Auth page (login + register on one page): dark teal with a muted sage accent.
+   Flat surfaces, 1px borders, 2px corners max, no shadows, no hover transitions.
+   The only motion is the blade sliding when the user clicks a switch link.
+   The --ws-* colour tokens are shared with the app pages (.app-body). */
+.auth-body,
+.app-body {
+    --ws-bg: #071a1c;
+    --ws-surface: #0b2225;
+    --ws-raised: #0f2c2f;
+    --ws-border: #1e3d3f;
+    --ws-blade: #12332f;
+    --ws-text: #e6ebe3;
+    --ws-muted: #9fb0a8;
+    --ws-accent: #cbd68f;
+    --ws-accent-border: #cbd68f;
+    --ws-on-accent: #0b2225;
+    --ws-link: #cbd68f;
+    --ws-phase: 450ms cubic-bezier(0.65, 0, 0.35, 1);
+    --ws-phase-gap: 380ms;
+    background-color: var(--ws-bg);
+    color: var(--ws-text);
+}
+
+.auth-body .container {
+    max-width: 1088px;
+}
+
+.auth-stage {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 600px;
+    margin: 6vh 0;
+    background-color: var(--ws-surface);
+    border: 1px solid var(--ws-border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.auth-pane {
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 56px;
+}
+
+/* Extra inner padding keeps the form clear of the blade's angled edge. */
+.auth-pane-login {
+    grid-column: 1;
+    padding-right: 88px;
+}
+
+.auth-pane-register {
+    grid-column: 2;
+    padding-left: 88px;
+}
+
+/* The blade spans the whole stage; clip-path shows only part of it. Its left and right edges
+   (--blade-l, --blade-r) are animated separately, so a switch runs in two phases: the leading
+   edge sweeps across until the blade covers everything, then the trailing edge follows.
+   Each edge slants by 12% (the bottom sits 12% further right than the top).
+     login:    left edge at 44%, right edge off-stage at 100%
+     register: left edge off-stage at -12%, right edge at 44% */
+@property --blade-l {
+    syntax: "<percentage>";
+    inherits: false;
+    initial-value: 44%;
+}
+
+@property --blade-r {
+    syntax: "<percentage>";
+    inherits: false;
+    initial-value: 100%;
+}
+
+.auth-blade {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background-color: var(--ws-blade);
+    clip-path: polygon(
+        var(--blade-l) 0, var(--blade-r) 0,
+        calc(var(--blade-r) + 12%) 100%, calc(var(--blade-l) + 12%) 100%
+    );
+}
+
+/* Transitions use the destination's rule, so each mode moves its own leading edge first. */
+.auth-stage[data-mode="login"] .auth-blade {
+    --blade-l: 44%;
+    --blade-r: 100%;
+    transition: --blade-r var(--ws-phase) 0ms, --blade-l var(--ws-phase) var(--ws-phase-gap);
+}
+
+.auth-stage[data-mode="register"] .auth-blade {
+    --blade-l: -12%;
+    --blade-r: 44%;
+    transition: --blade-l var(--ws-phase) 0ms, --blade-r var(--ws-phase) var(--ws-phase-gap);
+}
+
+.auth-blade-copy {
+    grid-row: 1;
+    align-self: center;
+    padding: 56px 96px;
+    opacity: 0;
+    transition: opacity 200ms ease;
+}
+
+.auth-blade-register {
+    grid-column: 1;
+}
+
+.auth-blade-login {
+    grid-column: 2;
+}
+
+/* The incoming copy fades in while the trailing edge pulls back. */
+.auth-stage[data-mode="login"] .auth-blade-login,
+.auth-stage[data-mode="register"] .auth-blade-register {
+    opacity: 1;
+    transition: opacity 300ms ease 550ms;
+}
+
+.auth-blade-copy .auth-brand {
+    margin-bottom: 64px;
+}
+
+/* Blade copy is centred so the emblem, headline and lead sit on one axis. */
+.auth-blade-copy {
+    text-align: center;
+}
+
+.auth-blade-copy .auth-brand {
+    justify-content: center;
+}
+
+.auth-blade-copy .auth-lead {
+    max-width: 360px;
+    margin: 0 auto;
+}
+
+.auth-blade-login .auth-brand {
+    margin-bottom: 20px;
+}
+
+/* Lock emblem on the "Welcome back" side. Flat strokes in the theme colours, no glow. */
+.auth-lock-art {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    margin: 0 auto 24px auto;
+}
+
+.lock-binary text {
+    fill: var(--ws-accent);
+}
+
+.lock-disc {
+    fill: var(--ws-blade);
+}
+
+.lock-ring,
+.lock-ring-dashed,
+.lock-arc,
+.lock-tick {
+    fill: none;
+    stroke: var(--ws-accent);
+}
+
+.lock-ring {
+    stroke-width: 1.5;
+    stroke-opacity: 0.55;
+}
+
+.lock-ring-dashed {
+    stroke-width: 1;
+    stroke-opacity: 0.3;
+    stroke-dasharray: 2 6;
+}
+
+.lock-arc {
+    stroke-width: 2;
+    stroke-opacity: 0.7;
+}
+
+.lock-tick {
+    stroke-width: 1.5;
+    stroke-opacity: 0.6;
+}
+
+.lock-node {
+    fill: var(--ws-accent);
+}
+
+/* The outer arcs turn slowly, like a scanner sweep. */
+.lock-orbit {
+    transform-box: view-box;
+    transform-origin: 200px 105px;
+    animation: lock-orbit 18s linear infinite;
+}
+
+@keyframes lock-orbit {
+    to { transform: rotate(360deg); }
+}
+
+.lock-shackle {
+    fill: none;
+    stroke: var(--ws-accent);
+    stroke-width: 9;
+}
+
+.lock-body {
+    fill: var(--ws-accent);
+}
+
+.lock-hole {
+    fill: var(--ws-blade);
+}
+
+/* Chrome autofill paints inputs pale blue; repaint them in the theme colours. */
+:is(.auth-body, .app-body) .scan-input:-webkit-autofill,
+:is(.auth-body, .app-body) .scan-input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px var(--ws-raised) inset;
+    -webkit-text-fill-color: var(--ws-text);
+    caret-color: var(--ws-text);
+}
+
+.auth-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.auth-logo {
+    color: var(--ws-link);
+}
+
+.auth-headline {
+    color: var(--ws-accent);
+    font-size: 34px;
+    line-height: 1.2;
+    margin: 0 0 12px 0;
+}
+
+.auth-lead {
+    color: var(--ws-muted);
+    font-size: 16px;
+    margin: 0;
+}
+
+.auth-title {
+    margin: 0 0 6px 0;
+    font-size: 24px;
+}
+
+.auth-subtitle {
+    margin: 0 0 28px 0;
+    color: var(--ws-muted);
+    font-size: 14px;
+}
+
+.auth-body .auth-form {
+    max-width: none;
+}
+
+.auth-body .scan-label {
+    color: var(--ws-text);
+}
+
+:is(.auth-body, .app-body) .scan-input {
+    background-color: var(--ws-raised);
+    border: 1px solid var(--ws-border);
+    border-radius: 2px;
+    color: var(--ws-text);
+}
+
+:is(.auth-body, .app-body) .scan-input:focus,
+:is(.auth-body, .app-body) .scan-button:focus-visible,
+:is(.auth-body, .app-body) a:focus-visible {
+    outline: 2px solid var(--ws-link);
+    outline-offset: 1px;
+}
+
+:is(.auth-body, .app-body) .scan-button {
+    background-color: var(--ws-accent);
+    border: 1px solid var(--ws-accent-border);
+    border-radius: 2px;
+    color: var(--ws-on-accent);
+    padding: 12px 24px;
+}
+
+.field-hint {
+    font-size: 13px;
+    color: var(--ws-muted);
+    margin: -8px 0 12px 0;
+}
+
+:is(.auth-body, .app-body) .form-error {
+    background-color: #2a1418;
+    border: 1px solid var(--color-fail);
+    border-radius: 2px;
+    color: #f0c6c6;
+    font-weight: 600;
+    padding: 10px 12px;
+}
+
+.auth-body .auth-switch {
+    color: var(--ws-muted);
+}
+
+.auth-body .auth-switch a,
+.auth-body .site-footer a {
+    color: var(--ws-link);
+}
+
+.auth-body .site-footer {
+    border-top: 1px solid var(--ws-border);
+    margin-top: 0;
+}
+
+/* Narrow screens: no blade animation. The blade becomes a header and only the active form shows. */
+@media (max-width: 820px) {
+    .auth-stage {
+        grid-template-columns: 1fr;
+        min-height: 0;
+        margin: 16px 0;
+    }
+
+    .auth-stage .auth-blade {
+        position: static;
+        grid-row: 1;
+        grid-template-columns: 1fr;
+        clip-path: none;
+        transition: none;
+    }
+
+    .auth-blade-copy {
+        display: none;
+        padding: 28px 20px;
+    }
+
+    .auth-stage[data-mode="login"] .auth-blade-login,
+    .auth-stage[data-mode="register"] .auth-blade-register {
+        display: block;
+        grid-column: 1;
+    }
+
+    .auth-blade-copy .auth-brand {
+        margin-bottom: 20px;
+    }
+
+    .auth-lock-art {
+        display: none;
+    }
+
+    .auth-headline {
+        font-size: 24px;
+    }
+
+    .auth-pane,
+    .auth-pane-login,
+    .auth-pane-register {
+        grid-row: 2;
+        grid-column: 1;
+        padding: 28px 20px;
+    }
+
+    .auth-stage[data-mode="login"] .auth-pane-register,
+    .auth-stage[data-mode="register"] .auth-pane-login {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-blade,
+    .auth-blade-copy {
+        transition: none !important;
+    }
+
+    .lock-orbit {
+        animation: none;
+    }
+}
+
+
+/* App pages (dashboard): same --ws-* tokens as the auth page.
+   Flat cards, 1px borders, 2px corners. Motion runs once on load (cards fade in, gauge, rings
+   and bars fill, numbers count up); hover states change instantly with no transitions. */
+.app-body {
+    --ws-pass: #9cc67a;
+    --ws-warn: #d9b25f;
+    --ws-fail: #e0806f;
+    --ws-low: #8fb3c9;
+    --ws-sidebar: 240px;
+}
+
+.app-body a {
+    color: var(--ws-accent);
+}
+
+.tone-pass, .tone-strong { --tone: var(--ws-pass); }
+.tone-warn, .tone-moderate { --tone: var(--ws-warn); }
+.tone-fail, .tone-weak, .tone-minimal { --tone: var(--ws-fail); }
+.tone-low { --tone: var(--ws-low); }
+
+.app-body .container {
+    max-width: none;
+    padding: 0;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.app-shell {
+    display: grid;
+    grid-template-columns: var(--ws-sidebar) 1fr;
+    min-height: 100vh;
+}
+
+.app-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 16px;
+    background-color: var(--ws-surface);
+    border-right: 1px solid var(--ws-border);
+}
+
+.app-body .app-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px;
+    margin-bottom: 32px;
+    color: var(--ws-text);
+    font-size: 18px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.app-brand svg {
+    color: var(--ws-accent);
+}
+
+.app-nav-heading {
+    margin: 0 8px 8px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ws-muted);
+}
+
+.app-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.app-body .app-nav a,
+.app-body .app-logout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    color: var(--ws-muted);
+    font-size: 14px;
+    text-decoration: none;
+    border: 1px solid transparent;
+    border-radius: 2px;
+}
+
+.app-body .app-nav a:hover,
+.app-body .app-logout:hover {
+    color: var(--ws-text);
+    background-color: var(--ws-raised);
+}
+
+.app-body .app-nav a.is-active {
+    color: var(--ws-accent);
+    background-color: var(--ws-raised);
+    border-color: var(--ws-border);
+}
+
+.app-body .app-nav a {
+    white-space: nowrap;
+}
+
+.app-nav svg,
+.app-logout svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.app-sidebar-foot {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--ws-border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.app-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 0 8px;
+}
+
+.app-avatar {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    background-color: var(--ws-accent);
+    color: var(--ws-on-accent);
+    font-weight: 700;
+    border-radius: 2px;
+}
+
+.app-user-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    font-size: 13px;
+}
+
+.app-user-text span {
+    color: var(--ws-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-main {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+    padding: 28px 32px 48px;
+}
+
+.app-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--ws-border);
+}
+
+.app-title {
+    margin: 0;
+    font-size: 24px;
+}
+
+.app-subtitle {
+    margin: 4px 0 0;
+    color: var(--ws-muted);
+    font-size: 14px;
+}
+
+.app-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--ws-border);
+    border-radius: 2px;
+    color: var(--ws-muted);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+/* Live indicator: a dot with a ring that expands and fades, like a monitoring heartbeat. */
+.status-dot {
+    position: relative;
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--ws-pass);
+}
+
+.status-dot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--ws-pass);
+    border-radius: 50%;
+    animation: status-ping 2s ease-out infinite;
+}
+
+@keyframes status-ping {
+    from { transform: scale(1); opacity: 0.8; }
+    to { transform: scale(2.8); opacity: 0; }
+}
+
+.dash-card {
+    min-width: 0;
+    padding: 20px 22px;
+    background-color: var(--ws-surface);
+    border: 1px solid var(--ws-border);
+    border-radius: 2px;
+    animation: dash-in 450ms ease both;
+    animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@keyframes dash-in {
+    from { opacity: 0; transform: translateY(8px); }
+}
+
+.dash-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.dash-card-head h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.dash-hint {
+    color: var(--ws-muted);
+    font-size: 12px;
+}
+
+.dash-link {
+    font-size: 13px;
+}
+
+.dash-scan .scan-form {
+    flex-wrap: nowrap;
+}
+
+.app-body .scan-input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+}
+
+.app-body .scan-button {
+    padding: 12px 28px;
+}
+
+.app-body .scan-button:disabled {
+    opacity: 0.7;
+    cursor: progress;
+}
+
+.dash-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.dash-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dash-stat-label {
+    color: var(--ws-muted);
+    font-size: 13px;
+}
+
+.dash-stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-stat-value small {
+    margin-left: 2px;
+    color: var(--ws-muted);
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.dash-stat-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ws-muted);
+    font-size: 12px;
+}
+
+.dash-chip {
+    padding: 1px 7px;
+    border: 1px solid var(--ws-border);
+    border-radius: 2px;
+    color: var(--ws-text);
+    font-weight: 700;
+}
+
+.dash-chip.is-up {
+    color: var(--ws-pass);
+    border-color: currentColor;
+}
+
+.dash-chip.is-down {
+    color: var(--ws-fail);
+    border-color: currentColor;
+}
+
+#dashboard-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#dashboard-body.is-hidden {
+    display: none;
+}
+
+.dash-row {
+    display: grid;
+    gap: 16px;
+}
+
+.dash-row > .dash-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.dash-row-gauge {
+    grid-template-columns: minmax(280px, 1fr) 1.7fr;
+}
+
+.dash-row-trend {
+    grid-template-columns: 1.5fr 1fr;
+}
+
+/* Gauge: the arc fills and the needle sweeps from 0 to the score. */
+.gauge {
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.gauge svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.gauge-track,
+.gauge-fill {
+    fill: none;
+    stroke-width: 16;
+}
+
+.gauge-track {
+    stroke: var(--ws-raised);
+}
+
+.gauge-fill {
+    stroke: var(--tone);
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    transition: stroke-dashoffset 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s;
+}
+
+.is-ready .gauge-fill {
+    stroke-dashoffset: calc(100 - var(--score));
+}
+
+.gauge-ticks {
+    stroke: var(--ws-muted);
+    stroke-width: 2;
+    opacity: 0.5;
+}
+
+.gauge-needle {
+    transform-box: view-box;
+    transform-origin: 120px 120px;
+    transform: rotate(-90deg);
+    transition: transform 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s;
+}
+
+.is-ready .gauge-needle {
+    transform: rotate(calc(-90deg + var(--score) * 1.8deg));
+}
+
+.gauge-needle line {
+    stroke: var(--ws-text);
+    stroke-width: 3;
+    stroke-linecap: round;
+}
+
+.gauge-needle circle {
+    fill: var(--ws-text);
+}
+
+.gauge-readout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: -4px;
+}
+
+.gauge-score {
+    font-size: 28px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.gauge-rating {
+    color: var(--tone);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.gauge-target {
+    margin: 12px 0 0;
+    color: var(--ws-muted);
+    font-size: 13px;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Rings: each one draws its share of the latest scan's findings. */
+.rings {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    align-items: center;
+}
+
+.ring {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.ring svg {
+    width: 100%;
+    max-width: 120px;
+    transform: rotate(-90deg);
+}
+
+.ring-track,
+.ring-fill {
+    fill: none;
+    stroke-width: 9;
+}
+
+.ring-track {
+    stroke: var(--ws-raised);
+}
+
+.ring-fill {
+    stroke: var(--tone);
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    transition: stroke-dashoffset 1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s;
+}
+
+.is-ready .ring-fill {
+    stroke-dashoffset: calc(100 - var(--pct));
+}
+
+.ring-center {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 120px;
+    aspect-ratio: 1;
+}
+
+.ring-center strong {
+    font-size: 24px;
+    font-variant-numeric: tabular-nums;
+}
+
+.ring-center span {
+    color: var(--ws-muted);
+    font-size: 11px;
+}
+
+.ring-label {
+    color: var(--tone);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Score trend: bars grow from the baseline one after another. */
+.trend {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    height: 220px;
+}
+
+.trend-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-bottom: 22px;
+    color: var(--ws-muted);
+    font-size: 11px;
+    text-align: right;
+}
+
+.trend-bars {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 10px;
+    padding-left: 10px;
+    border-left: 1px solid var(--ws-border);
+}
+
+.app-body .trend-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    text-decoration: none;
+}
+
+.trend-track {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    max-width: 28px;
+    background-color: var(--ws-raised);
+    border-radius: 2px;
+}
+
+.trend-bar:hover .trend-track {
+    outline: 1px solid var(--ws-accent);
+}
+
+.trend-fill {
+    width: 100%;
+    background-color: var(--tone);
+    border-radius: 2px 2px 0 0;
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: calc(300ms + var(--i) * 60ms);
+}
+
+.is-ready .trend-fill {
+    transform: scaleY(1);
+}
+
+.trend-label {
+    color: var(--ws-muted);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.fail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.fail-list li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 12px;
+    font-size: 13px;
+}
+
+.fail-count {
+    color: var(--ws-muted);
+}
+
+.fail-bar {
+    grid-column: 1 / -1;
+    height: 6px;
+    background-color: var(--ws-raised);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.fail-bar span {
+    display: block;
+    height: 100%;
+    background-color: var(--ws-fail);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 800ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: calc(400ms + var(--i) * 80ms);
+}
+
+.is-ready .fail-bar span {
+    transform: scaleX(1);
+}
+
+.dash-table-wrap {
+    overflow-x: auto;
+}
+
+.dash-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.dash-table th {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--ws-border);
+    color: var(--ws-muted);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.dash-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--ws-border);
+    white-space: nowrap;
+}
+
+.dash-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.dash-table tbody tr:hover {
+    background-color: var(--ws-raised);
+}
+
+.dash-table td:first-child {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.score-meter {
+    display: inline-block;
+    width: 60px;
+    height: 6px;
+    margin-right: 8px;
+    vertical-align: middle;
+    background-color: var(--ws-raised);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.score-meter span {
+    display: block;
+    height: 100%;
+    background-color: var(--tone);
+}
+
+.dash-pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border: 1px solid var(--tone);
+    border-radius: 2px;
+    color: var(--tone);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.dash-empty h2 {
+    margin: 0 0 8px;
+    font-size: 18px;
+}
+
+.dash-empty-text {
+    margin: 0;
+    color: var(--ws-muted);
+    font-size: 14px;
+}
+
+.app-body .skeleton-line,
+.app-body .skeleton-row {
+    background-color: var(--ws-raised);
+}
+
+.skeleton-caption {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 4px;
+    color: var(--ws-muted);
+    font-size: 14px;
+}
+
+.app-body .site-footer {
+    margin: 0 0 0 var(--ws-sidebar);
+    border-top: 1px solid var(--ws-border);
+}
+
+.app-body .site-footer .container {
+    padding: 0 32px;
+}
+
+@media (max-width: 1100px) {
+    .dash-row-gauge,
+    .dash-row-trend {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    .app-shell {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .app-sidebar {
+        min-width: 0;
+        position: static;
+        height: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 16px;
+        padding: 12px 16px;
+        border-right: 0;
+        border-bottom: 1px solid var(--ws-border);
+    }
+
+    .app-body .app-brand {
+        margin: 0 auto 0 0;
+        padding: 0;
+    }
+
+    .app-nav-heading,
+    .app-user {
+        display: none;
+    }
+
+    .app-nav {
+        order: 3;
+        flex-direction: row;
+        flex-basis: 100%;
+        overflow-x: auto;
+    }
+
+    .app-sidebar-foot {
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    .app-main {
+        padding: 20px 16px 40px;
+    }
+
+    .app-topbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .dash-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .app-body .site-footer {
+        margin-left: 0;
+    }
+
+    .app-body .site-footer .container {
+        padding: 0 16px;
+    }
+}
+
+@media (max-width: 560px) {
+    .rings {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dash-scan .scan-form {
+        flex-wrap: wrap;
+    }
+
+    .app-body .scan-button {
+        width: 100%;
+    }
+
+    .dash-stat-value {
+        font-size: 26px;
+    }
+
+    .dash-scan .dash-hint {
+        display: none;
+    }
+
+    /* Too narrow for a date under every bar: keep the first and last. */
+    .trend-bar:not(:first-child):not(:last-child) .trend-label {
+        visibility: hidden;
+    }
+
+    .trend-bars {
+        gap: 6px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dash-card,
+    .status-dot::after {
+        animation: none;
+    }
+
+    .gauge-fill,
+    .gauge-needle,
+    .ring-fill,
+    .trend-fill,
+    .fail-bar span {
+        transition: none;
+    }
+}

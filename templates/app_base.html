@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block body_class %}app-body{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+    <aside class="app-sidebar">
+        <a href="/" class="app-brand">
+            <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+                <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="M12 7v5m0 3.2v.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <span>WebSecure</span>
+        </a>
+
+        <p class="app-nav-heading">Main menu</p>
+        <nav class="app-nav">
+            <a href="/" class="{{ 'is-active' if active == 'dashboard' }}" {% if active == 'dashboard' %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>
+                Dashboard
+            </a>
+            <a href="/#scan-panel">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>
+                New scan
+            </a>
+            <a href="/history" class="{{ 'is-active' if active == 'history' }}" {% if active == 'history' %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
+                Scan history
+            </a>
+        </nav>
+
+        <div class="app-sidebar-foot">
+            {% if user %}
+            <div class="app-user">
+                <span class="app-avatar" aria-hidden="true">{{ user.name[:1] | upper }}</span>
+                <span class="app-user-text">
+                    <strong>{{ user.name }}</strong>
+                    <span>{{ user.email }}</span>
+                </span>
+            </div>
+            {% endif %}
+            <a href="/logout" class="app-logout">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg>
+                Log out
+            </a>
+        </div>
+    </aside>
+
+    <div class="app-main">
+        <header class="app-topbar">
+            <div>
+                <h1 class="app-title">{% block page_title %}{% endblock %}</h1>
+                <p class="app-subtitle">{% block page_subtitle %}{% endblock %}</p>
+            </div>
+            <span class="app-status"><span class="status-dot" aria-hidden="true"></span>Scanner ready</span>
+        </header>
+
+        {% block app_content %}{% endblock %}
+    </div>
+</div>
+{% endblock %}

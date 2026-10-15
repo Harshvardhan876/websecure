@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}WebSecure - {{ "Log In" if mode == "login" else "Register" }}{% endblock %}
+
+{% block body_class %}auth-body{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
+{# Both forms live on one page. The navy blade covers the inactive form and slides across
+   when the user switches. Without JavaScript the switch links are plain page loads. #}
+<div class="auth-stage" data-mode="{{ mode }}">
+    <section class="auth-pane auth-pane-login" {% if mode != "login" %}inert{% endif %}>
+        <h2 class="auth-title">Log in</h2>
+        <p class="auth-subtitle">Log in to run a scan.</p>
+
+        {% if error and mode == "login" %}
+        <p class="form-error" role="alert">{{ error }}</p>
+        {% endif %}
+
+        <form class="auth-form" action="/login" method="POST">
+            <label for="login-email" class="scan-label">Email</label>
+            <input type="email" id="login-email" name="email" class="scan-input" value="{{ request.form.email if mode == 'login' }}" autocomplete="email" required {% if mode == "login" %}autofocus{% endif %}>
+
+            <label for="login-password" class="scan-label">Password</label>
+            <input type="password" id="login-password" name="password" class="scan-input" autocomplete="current-password" required>
+
+            <button type="submit" class="scan-button">Log in</button>
+        </form>
+
+        <p class="auth-switch">No account? <a href="/register" data-auth-switch="register">Create one</a></p>
+    </section>
+
+    <section class="auth-pane auth-pane-register" {% if mode != "register" %}inert{% endif %}>
+        <h2 class="auth-title">Create an account</h2>
+        <p class="auth-subtitle">Free. Your scans are saved to your account.</p>
+
+        {% if error and mode == "register" %}
+        <p class="form-error" role="alert">{{ error }}</p>
+        {% endif %}
+
+        <form class="auth-form" action="/register" method="POST">
+            <label for="register-name" class="scan-label">Name</label>
+            <input type="text" id="register-name" name="name" class="scan-input" value="{{ request.form.name if mode == 'register' }}" autocomplete="name" required {% if mode == "register" %}autofocus{% endif %}>
+
+            <label for="register-email" class="scan-label">Email</label>
+            <input type="email" id="register-email" name="email" class="scan-input" value="{{ request.form.email if mode == 'register' }}" autocomplete="email" required>
+
+            <label for="register-password" class="scan-label">Password</label>
+            <input type="password" id="register-password" name="password" class="scan-input" minlength="8" autocomplete="new-password" required>
+            <span class="field-hint">At least 8 characters.</span>
+
+            <button type="submit" class="scan-button">Create account</button>
+        </form>
+
+        <p class="auth-switch">Already have an account? <a href="/login" data-auth-switch="login">Log in</a></p>
+    </section>
+
+    {% set brand %}
+    <div class="auth-brand">
+        <svg class="auth-logo" viewBox="0 0 24 24" width="28" height="28">
+            <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M12 7v5m0 3.2v.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span>WebSecure</span>
+    </div>
+    {% endset %}
+    <div class="auth-blade" aria-hidden="true">
+        <div class="auth-blade-copy auth-blade-register">
+            {{ brand }}
+            <h1 class="auth-headline">Check any site's security headers.</h1>
+            <p class="auth-lead">One account. Eight header and cookie checks, a 0-100 score and a PDF report for every scan.</p>
+        </div>
+        <div class="auth-blade-copy auth-blade-login">
+            {{ brand }}
+            <svg class="auth-lock-art" viewBox="0 0 400 210" role="presentation" focusable="false">
+                <defs>
+                    <linearGradient id="lock-fade" x1="0" x2="1">
+                        <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+                        <stop offset="0.3" stop-color="#fff"/>
+                        <stop offset="0.7" stop-color="#fff"/>
+                        <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+                    </linearGradient>
+                    <mask id="lock-fade-mask"><rect width="400" height="210" fill="url(#lock-fade)"/></mask>
+                </defs>
+                {# Binary streams run behind the emblem and fade out at both ends. #}
+                <g class="lock-binary" mask="url(#lock-fade-mask)" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace">
+                    <text x="200" y="40" font-size="11" letter-spacing="6" opacity="0.35">1 0 1 1 0 0 1 0 1 1 1 0 0 1 0 1 1 0 1 0</text>
+                    <text x="200" y="72" font-size="14" letter-spacing="9" opacity="0.55">0 1 1 1 0 0 0 0 1 0 1 1 0 0 1</text>
+                    <text x="200" y="109" font-size="10" letter-spacing="5" opacity="0.4">1 1 0 1 0 1 1 1 0 0 1 0 1 1 0 1 0 1 1 0 1 0 0 1</text>
+                    <text x="200" y="146" font-size="13" letter-spacing="8" opacity="0.5">1 0 1 1 1 0 0 0 0 1 1 0 1 0 1 1</text>
+                    <text x="200" y="178" font-size="10" letter-spacing="5" opacity="0.3">1 1 1 1 1 1 0 1 0 1 1 0 0 1 0 1 1 1 0 1 0 0</text>
+                </g>
+                {# Emblem: a solid disc hides the binary behind the lock, framed by scanner rings. #}
+                <circle cx="200" cy="105" r="88" class="lock-disc"/>
+                <circle cx="200" cy="105" r="66" class="lock-ring"/>
+                <circle cx="200" cy="105" r="80" class="lock-ring-dashed"/>
+                <g class="lock-orbit">
+                    <path d="M200 11a94 94 0 0 1 81.4 47" class="lock-arc"/>
+                    <path d="M200 199a94 94 0 0 1-81.4-47" class="lock-arc"/>
+                    <circle cx="281.4" cy="58" r="3" class="lock-node"/>
+                    <circle cx="118.6" cy="152" r="3" class="lock-node"/>
+                </g>
+                <path d="M200 31v8M200 171v8M126 105h8M266 105h8" class="lock-tick"/>
+                <path d="M181 101V84a19 19 0 0 1 38 0v17" class="lock-shackle"/>
+                <rect x="168" y="98" width="64" height="50" rx="3" class="lock-body"/>
+                <circle cx="200" cy="117" r="6.5" class="lock-hole"/>
+                <path d="M196.3 119h7.4l1.8 15h-11z" class="lock-hole"/>
+            </svg>
+            <h1 class="auth-headline">Welcome back.</h1>
+            <p class="auth-lead">Your scans, scores and PDF reports are where you left them.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var stage = document.querySelector(".auth-stage");
+    var titles = { login: "WebSecure - Log In", register: "WebSecure - Register" };
+
+    function setMode(mode) {
+        stage.dataset.mode = mode;
+        stage.querySelector(".auth-pane-login").inert = mode !== "login";
+        stage.querySelector(".auth-pane-register").inert = mode !== "register";
+        document.title = titles[mode];
+        stage.querySelector(".auth-pane-" + mode + " input").focus({ preventScroll: true });
+    }
+
+    stage.querySelectorAll("[data-auth-switch]").forEach(function (link) {
+        link.addEventListener("click", function (event) {
+            event.preventDefault();
+            var mode = link.dataset.authSwitch;
+            history.pushState({ mode: mode }, "", "/" + mode);
+            setMode(mode);
+        });
+    });
+
+    window.addEventListener("popstate", function () {
+        setMode(location.pathname === "/register" ? "register" : "login");
+    });
+})();
+</script>
+{% endblock %}
