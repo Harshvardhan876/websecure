@@ -1,5 +1,7 @@
 """Passive security header scanner. Implements docs/03_SECURITY_METHODOLOGY.md exactly."""
+import ipaddress
 import re
+import socket
 import sys
 import time
 from email.message import Message
@@ -37,8 +39,21 @@ class InvalidURLError(ValueError):
     pass
 
 
+def is_public_host(hostname):
+    """True only if every address the host resolves to is on the public internet.
+
+    Blocks SSRF: without this, a user could make the server fetch localhost, private
+    networks (10.x, 192.168.x) or the cloud metadata address 169.254.169.254.
+    """
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except (socket.gaierror, UnicodeError):
+        return False
+    return all(ipaddress.ip_address(info[4][0].split("%")[0]).is_global for info in infos)
+
+
 def validate_url(url):
-    """Enforce http/https scheme and a plausible host with a TLD."""
+    """Enforce http/https, a plausible domain, and a public (non-internal) address."""
     parsed = urlparse(url.strip())
 
     if parsed.scheme not in ("http", "https"):
@@ -48,8 +63,13 @@ def validate_url(url):
         raise InvalidURLError("URL must include a host, e.g. https://example.com")
 
     hostname = parsed.hostname or ""
-    if hostname != "localhost" and "." not in hostname:
+    if "." not in hostname:
         raise InvalidURLError(f"'{hostname}' does not look like a valid domain")
+
+    if not is_public_host(hostname):
+        raise InvalidURLError(
+            f"'{hostname}' could not be resolved, or points to a private or internal address. Only public websites can be scanned."
+        )
 
     return parsed.geturl()
 
@@ -397,6 +417,12 @@ def classify_risk(score):
 def scan(url):
     target_url = validate_url(url)
     response, ssl_warning = fetch(target_url)
+    # A public site can redirect to an internal address. Refuse to report anything from such a chain.
+    # ponytail: the browser has already sent that request; blocking it up front needs a filtering proxy.
+    for hop in [response] + response.history:
+        host = urlparse(hop.url).hostname
+        if host and not is_public_host(host):
+            raise ScanError(f"the site redirected to a private or internal address ({host})")
     score, findings = evaluate(response, ssl_warning)
     return {
         "target_url": target_url,

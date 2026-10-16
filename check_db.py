@@ -1,56 +1,26 @@
 """Standalone connectivity check: run `python check_db.py`.
 
-Checks two things:
-1. Local SQLite (the app's actual DB for now, via Flask-SQLAlchemy).
-2. Turso reachability, if TURSO_DATABASE_URL / TURSO_AUTH_TOKEN are set,
-   using libsql-client's HTTP transport directly (its dbapi2/SQLAlchemy
-   shim only supports WebSocket, which this project's Turso instance
-   rejects at handshake -- see docs/05_IMPLEMENTATION_LOG.md).
+Connects to whichever database the app is configured for (Turso when
+TURSO_DATABASE_URL / TURSO_AUTH_TOKEN are set, otherwise local SQLite),
+runs SELECT 1 and lists the tables. The auth token is never printed.
 """
-from dotenv import load_dotenv
-
-load_dotenv()
-
-import os
-
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 
 from app import app
 from db import db
 
 
-def check_local_sqlite():
+def main():
     with app.app_context():
+        uri = app.config["SQLALCHEMY_DATABASE_URI"]
+        target = "Turso" if uri.startswith("sqlite+libsql://") else "local SQLite"
         try:
             db.session.execute(text("SELECT 1"))
-            print(f"OK: local SQLite reachable ({app.config['SQLALCHEMY_DATABASE_URI']})")
         except Exception as exc:
-            print(f"FAIL: local SQLite check failed: {exc}")
+            print(f"FAIL: {target} not reachable: {exc}")
             raise SystemExit(1)
-
-
-def check_turso():
-    turso_url = os.getenv("TURSO_DATABASE_URL", "")
-    turso_token = os.getenv("TURSO_AUTH_TOKEN", "")
-
-    if not turso_url or not turso_token:
-        print("SKIP: TURSO_DATABASE_URL / TURSO_AUTH_TOKEN not set, skipping Turso check")
-        return
-
-    import libsql_client
-
-    http_url = turso_url.replace("libsql://", "https://", 1)
-    client = libsql_client.create_client_sync(url=http_url, auth_token=turso_token)
-    try:
-        client.execute("SELECT 1")
-        print(f"OK: Turso reachable via HTTPS ({http_url})")
-    except Exception as exc:
-        print(f"FAIL: could not reach Turso: {exc}")
-        raise SystemExit(1)
-    finally:
-        client.close()
+        print(f"OK: {target} reachable. Tables: {', '.join(sorted(inspect(db.engine).get_table_names()))}")
 
 
 if __name__ == "__main__":
-    check_local_sqlite()
-    check_turso()
+    main()

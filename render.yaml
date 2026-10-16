@@ -1,4 +1,4 @@
-# Render blueprint. NOT yet verified on Render: see docs/05_IMPLEMENTATION_LOG.md, Session 15.
+# Render blueprint. Data lives in Turso (TURSO_* below); Render's own disk is wiped on every deploy.
 services:
   - type: web
     name: websecure
@@ -9,10 +9,14 @@ services:
     # One worker: each scan launches a Chromium process, and the free plan has 512 MB of RAM.
     startCommand: gunicorn app:app --workers 1 --timeout 60
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.2
       - key: PLAYWRIGHT_BROWSERS_PATH
         value: /opt/render/project/src/.playwright
       - key: SECRET_KEY
         generateValue: true
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
       - key: TURSO_DATABASE_URL
         sync: false
       - key: TURSO_AUTH_TOKEN

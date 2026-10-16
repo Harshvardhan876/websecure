@@ -105,6 +105,15 @@ def main():
     })
     assert scanner.evaluate(perfect, ssl_warning=False)[0] == 100
 
+    # SSRF: internal addresses are refused (IP literals resolve without network access)
+    for url in ("http://127.0.0.1", "http://10.0.0.5", "http://192.168.1.1", "http://169.254.169.254/latest/meta-data/", "http://[::1]/", "http://0.0.0.0"):
+        try:
+            scanner.validate_url(url)
+            raise AssertionError(f"{url} should be blocked")
+        except scanner.InvalidURLError:
+            pass
+    assert scanner.is_public_host("8.8.8.8")
+
     # Rating bands: 80 / 60 / 40 boundaries
     assert [scanner.classify_risk(s) for s in (80, 79, 60, 59, 40, 39)] == [
         "Strong", "Moderate", "Moderate", "Weak", "Weak", "Minimal"]

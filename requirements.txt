@@ -1,6 +1,6 @@
 Flask
 Flask-SQLAlchemy
-libsql-client
+sqlalchemy-libsql==0.2.0
 python-dotenv
 playwright
 urllib3

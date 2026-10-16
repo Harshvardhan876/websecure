@@ -1,8 +1,10 @@
+import hmac
+import secrets
 from collections import Counter
 from functools import wraps
 from urllib.parse import urlparse
 
-from flask import Flask, Response, abort, redirect, render_template, request, session, url_for
+from flask import Flask, Response, abort, g, redirect, render_template, request, session, url_for
 
 import scanner
 from config import Config
@@ -26,6 +28,50 @@ from models import (  # noqa: E402
 
 with app.app_context():
     db.create_all()
+
+
+def csrf_token():
+    """Per-session secret that every form must send back (blocks cross-site form posts)."""
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_urlsafe(32)
+    return session["csrf_token"]
+
+
+def csp_nonce():
+    """Per-request nonce so the page's own inline scripts run under the CSP and injected ones don't."""
+    if "csp_nonce" not in g:
+        g.csp_nonce = secrets.token_urlsafe(16)
+    return g.csp_nonce
+
+
+app.jinja_env.globals.update(csrf_token=csrf_token, csp_nonce=csp_nonce)
+
+
+@app.before_request
+def check_csrf():
+    if request.method == "POST":
+        expected = session.get("csrf_token")
+        sent = request.form.get("csrf_token", "")
+        if not expected or not hmac.compare_digest(sent, expected):
+            abort(400, "This form has expired. Go back, reload the page and try again.")
+
+
+@app.after_request
+def security_headers(response):
+    """WebSecure sends every header its own scanner checks for."""
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        f"script-src 'self' 'nonce-{csp_nonce()}'; "
+        "style-src 'self' 'unsafe-inline'; "  # the dashboard sets CSS variables in style attributes
+        "img-src 'self' data:; object-src 'none'; base-uri 'self'; "
+        "form-action 'self'; frame-ancestors 'none'"
+    )
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
+    return response
 
 
 def login_required(view):
@@ -149,6 +195,7 @@ def register():
         except EmailAlreadyRegisteredError:
             return render_template("auth.html", mode="register", error="That email is already registered."), 400
 
+        session.clear()
         session["user_id"] = user.id
         return redirect(url_for("index"))
 
@@ -165,6 +212,7 @@ def login():
         if user is None:
             return render_template("auth.html", mode="login", error="Invalid email or password."), 401
 
+        session.clear()
         session["user_id"] = user.id
         return redirect(url_for("index"))
 
