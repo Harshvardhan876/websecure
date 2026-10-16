@@ -33,8 +33,12 @@ def main():
     assert app.config["SQLALCHEMY_DATABASE_URI"].endswith("test.db")
     c = app.test_client()
 
-    # Logged-out users are sent to login
-    assert c.get("/").headers["Location"].endswith("/login")
+    # Logged-out visitors get the public landing page (no login form), not a redirect
+    r = c.get("/")
+    page = r.get_data(as_text=True)
+    assert r.status_code == 200 and "What WebSecure checks" in page and 'type="password"' not in page
+    assert "/terms" in page and "/privacy" in page and "/register" in page
+    assert c.get("/history").headers["Location"].endswith("/login")  # private pages still need login
 
     # CSRF: a POST without the token, or with a wrong one, is rejected
     assert c.post("/login", data={"email": "a@b.co", "password": "x"}).status_code == 400

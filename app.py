@@ -122,8 +122,10 @@ def render_index(error=None):
 
 
 @app.route("/")
-@login_required
 def index():
+    # Visitors get a public page that explains the service; the dashboard is for logged-in users.
+    if "user_id" not in session:
+        return render_template("landing.html")
     return render_index()
 
 
