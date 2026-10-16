@@ -4,6 +4,8 @@ services:
     name: websecure
     runtime: python
     plan: free
+    # Closest Render region to the Turso database (aws-ap-south-1, Mumbai). Oregon added ~0.25s per query.
+    region: singapore
     # Browsers are installed inside the project directory so they survive from build to runtime.
     buildCommand: pip install -r requirements.txt && playwright install chromium
     # One worker: each scan launches a Chromium process, and the free plan has 512 MB of RAM.
