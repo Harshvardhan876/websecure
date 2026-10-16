@@ -13,7 +13,7 @@ from db import db
 def main():
     with app.app_context():
         uri = app.config["SQLALCHEMY_DATABASE_URI"]
-        target = "Turso" if uri.startswith("sqlite+libsql://") else "local SQLite"
+        target = "Turso" if uri.startswith("sqlite+tursohttp://") else "local SQLite"
         try:
             db.session.execute(text("SELECT 1"))
         except Exception as exc:
