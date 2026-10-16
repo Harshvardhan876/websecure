@@ -64,6 +64,12 @@ def main():
     assert bob.get(f"/results/{scan_id}").status_code == 404
     assert bob.get(f"/report/download/{scan_id}").status_code == 404
 
+    # Turso HTTP driver: values survive the JSON encoding both ways
+    import turso_http
+    for value in (None, 0, -7, 2**40, 1.5, "text", b"\x00\xffbytes"):
+        assert turso_http._decode(turso_http._encode(value)) == value, value
+    assert turso_http._decode(turso_http._encode(True)) == 1
+
     print("OK: app checks passed")
 
 
