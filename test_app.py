@@ -70,6 +70,46 @@ def main():
         assert turso_http._decode(turso_http._encode(value)) == value, value
     assert turso_http._decode(turso_http._encode(True)) == 1
 
+    # Turso HTTP driver: a write after the server dropped the idle connection is retried once.
+    # (This failed on Render: a slow scan left the socket idle, and saving the result raised.)
+    import http.client
+    import json
+
+    class FakeResponse:
+        status = 200
+
+        def read(self):
+            return json.dumps({"baton": "b1", "results": [
+                {"type": "ok", "response": {"type": "execute", "result": {"cols": [], "rows": [], "affected_row_count": 0}}},
+                {"type": "ok", "response": {"type": "execute", "result": {"cols": [], "rows": [], "affected_row_count": 1, "last_insert_rowid": "42"}}},
+            ]}).encode()
+
+    class FlakyHTTP:
+        calls = 0
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def request(self, *args, **kwargs):
+            FlakyHTTP.calls += 1
+            if FlakyHTTP.calls == 1:
+                raise http.client.RemoteDisconnected("Remote end closed connection without response")
+
+        def getresponse(self):
+            return FakeResponse()
+
+        def close(self):
+            pass
+
+    real_http = turso_http.http.client.HTTPSConnection
+    turso_http.http.client.HTTPSConnection = FlakyHTTP
+    try:
+        conn = turso_http.connect("https://db.example.invalid", "token")
+        cur = conn.cursor().execute("INSERT INTO t VALUES (?)", (1,))
+        assert FlakyHTTP.calls == 2 and cur.lastrowid == 42 and conn.in_transaction
+    finally:
+        turso_http.http.client.HTTPSConnection = real_http
+
     print("OK: app checks passed")
 
 

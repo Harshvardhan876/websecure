@@ -114,8 +114,11 @@ class Connection:
 
     def _pipeline(self, requests):
         body = json.dumps({"baton": self._baton, "requests": requests})
-        # A kept-alive socket may have been closed by the server while idle: reconnect once,
-        # but only outside a transaction, where re-sending cannot double-apply anything.
+        # A kept-alive socket may have been closed by the server while idle (e.g. during a
+        # slow scan): reconnect once. That is safe while no server-side stream exists yet
+        # (no baton), because nothing from this connection is pending on the server.
+        # Mid-transaction (baton set) a resend could double-apply, so the error is raised.
+        can_retry = self._baton is None
         for attempt in (1, 2):
             if self._http is None:
                 self._http = http.client.HTTPSConnection(self._host, timeout=REQUEST_TIMEOUT_SECONDS)
@@ -127,7 +130,7 @@ class Connection:
             except (http.client.HTTPException, OSError) as exc:
                 self._http.close()
                 self._http = None
-                if attempt == 2 or self.in_transaction:
+                if attempt == 2 or not can_retry:
                     raise OperationalError(f"Turso request failed: {exc}") from exc
 
         if response.status != 200:
@@ -160,6 +163,10 @@ class Connection:
         return self._pipeline(requests)[index]["result"]
 
     def _end_transaction(self, sql):
+        if self.in_transaction and self._baton is None:
+            # The opening request never reached the server, so there is nothing to end there.
+            self.in_transaction = False
+            return
         if self.in_transaction:
             try:
                 self._pipeline([{"type": "execute", "stmt": {"sql": sql}}, {"type": "close"}])
