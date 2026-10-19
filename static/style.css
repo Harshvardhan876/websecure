@@ -1938,3 +1938,207 @@ body {
         width: 100%;
     }
 }
+
+/* Scan-in-progress panel (templates/_scan_progress.html).
+   Only transform and opacity animate, so it stays smooth on slow machines. */
+.scan-progress {
+    gap: 20px;
+}
+
+.landing-body .scan-progress {
+    margin-bottom: 48px;
+}
+
+.scan-progress-head {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.scan-radar {
+    flex: none;
+    width: 96px;
+    height: 96px;
+}
+
+.radar-ring,
+.radar-cross {
+    fill: none;
+    stroke: var(--ws-accent);
+    stroke-width: 1;
+    opacity: 0.25;
+}
+
+.radar-cross {
+    opacity: 0.12;
+}
+
+.radar-sweep {
+    transform-box: view-box;
+    transform-origin: 60px 60px;
+    animation: radar-spin 2.4s linear infinite;
+    will-change: transform;
+}
+
+.radar-beam,
+.radar-arc {
+    fill: none;
+    stroke: var(--ws-accent);
+    stroke-linecap: round;
+}
+
+.radar-beam {
+    stroke-width: 1.5;
+    opacity: 0.9;
+}
+
+.radar-arc {
+    stroke-width: 3;
+    opacity: 0.55;
+}
+
+.radar-blip {
+    fill: var(--ws-accent);
+    opacity: 0;
+    animation: radar-blip 2.4s ease-out infinite;
+}
+
+/* Each blip lights up roughly when the sweep passes its angle. */
+.radar-blip:nth-of-type(4) { animation-delay: 0.3s; }
+.radar-blip:nth-of-type(5) { animation-delay: 0.85s; }
+.radar-blip:nth-of-type(6) { animation-delay: 1.45s; }
+.radar-blip:nth-of-type(7) { animation-delay: 2.05s; }
+
+.radar-shield {
+    fill: var(--ws-accent);
+    opacity: 0.9;
+}
+
+@keyframes radar-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes radar-blip {
+    0% { opacity: 0; }
+    8% { opacity: 1; }
+    60%, 100% { opacity: 0; }
+}
+
+.scan-progress-title {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+#scan-progress-target {
+    color: var(--ws-accent);
+}
+
+.scan-progress-sub {
+    margin: 0;
+    color: var(--ws-muted);
+    font-size: 14px;
+}
+
+.scan-progress-time {
+    margin-left: 6px;
+    color: var(--ws-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.scan-checklist {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 24px;
+    margin: 0;
+    padding: 16px;
+    list-style: none;
+    background-color: var(--ws-raised);
+    border: 1px solid var(--ws-border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.scan-checklist li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--ws-muted);
+    font-size: 13px;
+}
+
+.scan-checklist .skeleton-line {
+    flex: none;
+    width: 64px;
+    height: 10px;
+    background-color: var(--ws-border);
+    animation-delay: calc(var(--row) * 0.12s);
+}
+
+/* A full-height layer whose bottom edge is the scan line; sliding it down moves the line across the list. */
+.scan-checklist .scan-beam {
+    position: absolute;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+    transform: translateY(-100%);
+    animation: scan-beam 2.2s ease-in-out infinite alternate;
+    will-change: transform;
+}
+
+.scan-beam::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 2px;
+    height: 28px;
+    background-color: var(--ws-accent);
+    opacity: 0.06;
+}
+
+.scan-beam::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background-color: var(--ws-accent);
+    opacity: 0.8;
+}
+
+@keyframes scan-beam {
+    to { transform: translateY(0); }
+}
+
+@media (max-width: 560px) {
+    .scan-checklist {
+        grid-template-columns: 1fr;
+    }
+
+    .scan-radar {
+        width: 72px;
+        height: 72px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .radar-sweep,
+    .radar-blip,
+    .scan-checklist .skeleton-line,
+    .scan-checklist .scan-beam {
+        animation: none;
+    }
+
+    .radar-blip {
+        opacity: 0.6;
+    }
+
+    .scan-checklist .scan-beam {
+        display: none;
+    }
+}

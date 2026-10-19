@@ -4,6 +4,7 @@ import re
 import socket
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from email.message import Message
 from types import SimpleNamespace
 from urllib.parse import urlparse
@@ -14,6 +15,13 @@ from playwright.sync_api import sync_playwright
 NAVIGATION_TIMEOUT_MS = 10_000
 # How long to let a JavaScript bot challenge (AWS WAF, Akamai, Cloudflare) resolve itself.
 CHALLENGE_WAIT_SECONDS = 8
+
+# The scan reads only the page's own response headers and HTML. Images and web fonts never change
+# those, so skipping them saves CPU without changing any result. Scripts still run (bot challenges
+# need them). --disable-dev-shm-usage avoids crashes in containers with a small /dev/shm.
+BROWSER_ARGS = ["--disable-dev-shm-usage", "--blink-settings=imagesEnabled=false", "--disable-remote-fonts"]
+# ponytail: Chromium is restarted every N scans to cap slow memory growth; tune if memory is tight.
+BROWSER_RECYCLE_AFTER_SCANS = 50
 
 # ponytail: vendor markers for the common bot walls (Akamai, Cloudflare, PerimeterX).
 # Extend the tuple when a new one shows up; no generic "captcha" match, it false-positives.
@@ -131,30 +139,64 @@ def _load(browser, url, ignore_https_errors):
         context.close()
 
 
+# One Chromium stays running between scans, because launching it was most of a scan's time on the
+# small hosting CPU. Every scan still gets a fresh browser context (no shared cookies or cache),
+# so results are the same as with a new browser. All browser work runs on this single thread:
+# Playwright's sync objects must stay on the thread that created them, and one thread also means
+# one scan at a time, which keeps memory predictable.
+_browser_thread = ThreadPoolExecutor(max_workers=1, thread_name_prefix="scanner-browser")
+_browser_state = {"playwright": None, "browser": None, "scans": 0}
+
+
+def _get_browser():
+    """Return the shared browser, (re)launching it if it is missing, crashed or due for a restart."""
+    browser = _browser_state["browser"]
+    if browser is not None and (not browser.is_connected() or _browser_state["scans"] >= BROWSER_RECYCLE_AFTER_SCANS):
+        try:
+            browser.close()
+        except PlaywrightError:
+            pass
+        browser = _browser_state["browser"] = None
+    if browser is None:
+        if _browser_state["playwright"] is None:
+            _browser_state["playwright"] = sync_playwright().start()
+        browser = _browser_state["browser"] = _browser_state["playwright"].chromium.launch(headless=True, args=BROWSER_ARGS)
+        _browser_state["scans"] = 0
+    _browser_state["scans"] += 1
+    return browser
+
+
+def _fetch_on_browser_thread(url):
+    started = time.perf_counter()
+    try:
+        browser = _get_browser()
+        ready = time.perf_counter()
+        try:
+            result = _load(browser, url, ignore_https_errors=False), False
+        except PlaywrightError as e:
+            if "ERR_CERT" not in str(e):
+                raise
+            try:
+                result = _load(browser, url, ignore_https_errors=True), True
+            except PlaywrightError:
+                # Some servers reset the first reconnect after the aborted strict handshake.
+                result = _load(browser, url, ignore_https_errors=True), True
+        done = time.perf_counter()
+        print(f"scan timing: browser {ready - started:.2f}s, page {done - ready:.2f}s, url {url}", file=sys.stderr, flush=True)
+        return result
+    except (PlaywrightError, IndexError) as e:
+        browser = _browser_state["browser"]
+        if browser is not None and not browser.is_connected():
+            _browser_state["browser"] = None  # it crashed; launch a new one next scan
+        raise ScanError(str(e).splitlines()[0] if str(e) else "no response received") from e
+
+
 def fetch(url):
     """Load the target in headless Chromium and return its final document response.
 
     Falls back to ignoring certificate errors so self-signed targets still scan.
     """
-    # ponytail: launches a browser per scan (~1s, ~300MB). Keep one shared browser
-    # alive if scan volume or memory on the host becomes a problem.
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
-        try:
-            try:
-                return _load(browser, url, ignore_https_errors=False), False
-            except PlaywrightError as e:
-                if "ERR_CERT" not in str(e):
-                    raise
-                try:
-                    return _load(browser, url, ignore_https_errors=True), True
-                except PlaywrightError:
-                    # Some servers reset the first reconnect after the aborted strict handshake.
-                    return _load(browser, url, ignore_https_errors=True), True
-        except (PlaywrightError, IndexError) as e:
-            raise ScanError(str(e).splitlines()[0] if str(e) else "no response received") from e
-        finally:
-            browser.close()
+    return _browser_thread.submit(_fetch_on_browser_thread, url).result()
 
 
 def detect_bot_challenge(response):

@@ -179,15 +179,7 @@
 {% endif %}
 </div>
 
-<section class="dash-card skeleton-panel" id="skeleton-panel" aria-live="polite">
-    <p class="skeleton-caption"><span class="status-dot" aria-hidden="true"></span>Scanning. Loading the page in a real browser and checking its headers.</p>
-    <div class="skeleton-line skeleton-line-title"></div>
-    <div class="skeleton-line skeleton-line-short"></div>
-    <div class="skeleton-row"></div>
-    <div class="skeleton-row"></div>
-    <div class="skeleton-row"></div>
-    <div class="skeleton-row"></div>
-</section>
+{% include "_scan_progress.html" %}
 
 <script nonce="{{ csp_nonce() }}">
 (function () {

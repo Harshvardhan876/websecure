@@ -27,14 +27,7 @@
     <p class="landing-note">No account needed to scan. Create a free account to download the PDF report and keep your history. Read-only: no attacks, no port or file scanning.</p>
 </section>
 
-<section class="dash-card skeleton-panel landing-skeleton" id="skeleton-panel" aria-live="polite">
-    <p class="skeleton-caption"><span class="status-dot" aria-hidden="true"></span>Scanning. Loading the page in a real browser and checking its headers. This takes up to 20 seconds.</p>
-    <div class="skeleton-line skeleton-line-title"></div>
-    <div class="skeleton-line skeleton-line-short"></div>
-    <div class="skeleton-row"></div>
-    <div class="skeleton-row"></div>
-    <div class="skeleton-row"></div>
-</section>
+{% include "_scan_progress.html" %}
 
 <div id="landing-rest">
 <section class="landing-section" aria-labelledby="checks-title">
