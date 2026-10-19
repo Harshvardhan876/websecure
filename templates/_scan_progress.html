@@ -1,0 +1,46 @@
+{# Shown while a scan runs (the page's own submit handler adds .is-active). Used by the dashboard and the landing page.
+   Every animation moves only transform/opacity, so the browser composites it without re-laying-out the page. #}
+<section class="dash-card skeleton-panel scan-progress" id="skeleton-panel" aria-live="polite">
+    <div class="scan-progress-head">
+        <svg class="scan-radar" viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="60" r="54" class="radar-ring"/>
+            <circle cx="60" cy="60" r="36" class="radar-ring"/>
+            <circle cx="60" cy="60" r="18" class="radar-ring"/>
+            <path d="M60 4v112M4 60h112" class="radar-cross"/>
+            <g class="radar-sweep">
+                <path d="M60 60V6" class="radar-beam"/>
+                <path d="M60 6A54 54 0 0 1 98.2 21.8" class="radar-arc"/>
+            </g>
+            <circle cx="86" cy="36" r="3" class="radar-blip"/>
+            <circle cx="88" cy="82" r="2.5" class="radar-blip"/>
+            <circle cx="34" cy="76" r="3" class="radar-blip"/>
+            <circle cx="38" cy="30" r="2.5" class="radar-blip"/>
+            <path d="M60 50l-8 3v5c0 4.6 3.4 8.6 8 10 4.6-1.4 8-5.4 8-10v-5l-8-3Z" class="radar-shield"/>
+        </svg>
+        <div>
+            <p class="scan-progress-title">Scanning <span id="scan-progress-target">the website</span></p>
+            <p class="scan-progress-sub">Loading the page in a real browser and reading its security headers. <span class="scan-progress-time"><span id="scan-progress-seconds">0</span>s</span></p>
+        </div>
+    </div>
+
+    <ul class="scan-checklist">
+        {% for check in ["Content-Security-Policy", "Strict-Transport-Security", "X-Frame-Options", "Cookie Security",
+                         "X-Content-Type-Options", "Referrer-Policy", "Permissions-Policy", "Information Disclosure"] %}
+        <li style="--row: {{ loop.index0 }}"><span>{{ check }}</span><span class="skeleton-line"></span></li>
+        {% endfor %}
+        <li class="scan-beam" aria-hidden="true"></li>
+    </ul>
+</section>
+
+<script nonce="{{ csp_nonce() }}">
+(function () {
+    var form = document.getElementById("scan-form");
+    form.addEventListener("submit", function () {
+        var url = document.getElementById("target_url").value.trim();
+        if (url) document.getElementById("scan-progress-target").textContent = url;
+        var seconds = document.getElementById("scan-progress-seconds");
+        var started = Date.now();
+        setInterval(function () { seconds.textContent = Math.floor((Date.now() - started) / 1000); }, 1000);
+    });
+})();
+</script>
