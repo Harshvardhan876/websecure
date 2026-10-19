@@ -20,6 +20,7 @@
 
         <form class="auth-form" action="/login" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.values.get('next', '') }}">
             <label for="login-email" class="scan-label">Email</label>
             <input type="email" id="login-email" name="email" class="scan-input" value="{{ request.form.email if mode == 'login' }}" autocomplete="email" required {% if mode == "login" %}autofocus{% endif %}>
 
@@ -42,6 +43,7 @@
 
         <form class="auth-form" action="/register" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.values.get('next', '') }}">
             <label for="register-name" class="scan-label">Name</label>
             <input type="text" id="register-name" name="name" class="scan-input" value="{{ request.form.name if mode == 'register' }}" autocomplete="name" required {% if mode == "register" %}autofocus{% endif %}>
 

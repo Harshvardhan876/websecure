@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "public_base.html" %}
 
 {% block title %}WebSecure - Check a website's security headers{% endblock %}
 
@@ -6,27 +6,7 @@
 <meta name="description" content="WebSecure is a free, passive scanner that checks a website's security headers and cookie flags and gives a 0-100 hardening score with a PDF report. A university project.">
 {% endblock %}
 
-{% block body_class %}landing-body{% endblock %}
-
-{% block header %}
-<header class="landing-header">
-    <div class="container landing-header-row">
-        <a href="/" class="landing-brand">
-            <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-                <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                <path d="M12 7v5m0 3.2v.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-            <span>WebSecure</span>
-        </a>
-        <nav class="landing-nav" aria-label="Account">
-            <a href="/login">Sign in</a>
-            <a href="/register" class="landing-button">Create account</a>
-        </nav>
-    </div>
-</header>
-{% endblock %}
-
-{% block content %}
+{% block app_content %}
 <section class="landing-hero">
     <p class="landing-eyebrow">Passive security header scanner</p>
     <h1>See how well a website is hardened, in seconds.</h1>
@@ -34,13 +14,29 @@
         Enter a public web address. WebSecure loads it in a real browser, reads the security headers and
         cookie settings the server sends back, and tells you what is missing and how to fix it.
     </p>
-    <div class="landing-cta">
-        <a href="/register" class="landing-button">Create a free account</a>
-        <a href="/login" class="landing-link">I already have an account</a>
-    </div>
-    <p class="landing-note">Free. Read-only. No attacks, no exploitation, no scanning of ports or files.</p>
+    {% if error %}
+    <p class="form-error" role="alert">{{ error }}</p>
+    {% endif %}
+
+    <form class="scan-form landing-scan" action="/scan" method="POST" id="scan-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="target_url" class="visually-hidden">Website address</label>
+        <input type="url" id="target_url" name="target_url" class="scan-input" placeholder="https://example.com" value="{{ request.form.target_url }}" required>
+        <button type="submit" class="scan-button" id="scan-submit">Scan for free</button>
+    </form>
+    <p class="landing-note">No account needed to scan. Create a free account to download the PDF report and keep your history. Read-only: no attacks, no port or file scanning.</p>
 </section>
 
+<section class="dash-card skeleton-panel landing-skeleton" id="skeleton-panel" aria-live="polite">
+    <p class="skeleton-caption"><span class="status-dot" aria-hidden="true"></span>Scanning. Loading the page in a real browser and checking its headers. This takes up to 20 seconds.</p>
+    <div class="skeleton-line skeleton-line-title"></div>
+    <div class="skeleton-line skeleton-line-short"></div>
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row"></div>
+</section>
+
+<div id="landing-rest">
 <section class="landing-section" aria-labelledby="checks-title">
     <h2 id="checks-title">What WebSecure checks</h2>
     <p class="landing-section-lead">Eight checks, weighted to a score out of 100. Each result shows the value the server actually sent.</p>
@@ -59,9 +55,9 @@
 <section class="landing-section" aria-labelledby="how-title">
     <h2 id="how-title">How it works</h2>
     <ol class="landing-steps">
-        <li><strong>Create a free account.</strong> It is only used to keep your scan history private to you.</li>
-        <li><strong>Enter a public web address.</strong> Private and internal addresses are refused.</li>
-        <li><strong>Read the report.</strong> You get a score, a rating from Strong to Minimal, the evidence for each check, a fix for each problem and a PDF you can download.</li>
+        <li><strong>Enter a public web address.</strong> No account needed. Private and internal addresses are refused.</li>
+        <li><strong>Read the report.</strong> You get a score, a rating from Strong to Minimal, the evidence for each check and a fix for each problem.</li>
+        <li><strong>Create a free account to keep it.</strong> Download the PDF and keep a private history of your scans. A scan you ran before signing up is saved to your new account.</li>
     </ol>
 </section>
 
@@ -79,10 +75,21 @@
 
 <section class="landing-section landing-about" aria-labelledby="about-title">
     <h2 id="about-title">About this project</h2>
-    <p>WebSecure is a student project built to show how security headers work. It stores only your name, email, a hashed password and your scan results. Read the <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a> for the details.</p>
+    <p>WebSecure is a student project built to show how security headers work. Scans run without an account store only the address scanned and its results. Accounts add your name, email and a hashed password. Read the <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a> for the details.</p>
     <div class="landing-cta">
-        <a href="/register" class="landing-button">Create a free account</a>
-        <a href="/login" class="landing-link">Sign in</a>
+        <a href="#target_url" class="landing-button">Scan a website</a>
+        <a href="/register" class="landing-link">Create a free account</a>
     </div>
 </section>
+</div>
+
+<script nonce="{{ csp_nonce() }}">
+document.getElementById("scan-form").addEventListener("submit", function () {
+    var button = document.getElementById("scan-submit");
+    button.disabled = true;
+    button.textContent = "Scanning";
+    document.getElementById("landing-rest").classList.add("is-hidden");
+    document.getElementById("skeleton-panel").classList.add("is-active");
+});
+</script>
 {% endblock %}

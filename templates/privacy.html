@@ -12,8 +12,13 @@
 
     <h2>2. Scan Data</h2>
     <p>When you run a scan, we store the target URL, the resulting score, header hardening rating,
-    and the individual header/cookie findings, tied to your account, so you can view
-    your scan history.</p>
+    and the individual header/cookie findings. If you are logged in, the scan is tied to your account
+    so you can view your scan history.</p>
+    <p>You can scan without an account. That scan is stored without any personal details, and only
+    your browser can open it, through a signed session cookie. If you then create an account or log in
+    from the same browser, the scan is added to your account.</p>
+    <p>To limit abuse, we count scans per IP address for one hour. This count is kept in memory only
+    and is never written to the database.</p>
 
     <h2>3. Data We Don't Collect</h2>
     <p>We do not sell your data, run analytics trackers, or share scan results with

@@ -506,8 +506,8 @@ body {
 }
 
 /* Chrome autofill paints inputs pale blue; repaint them in the theme colours. */
-:is(.auth-body, .app-body) .scan-input:-webkit-autofill,
-:is(.auth-body, .app-body) .scan-input:-webkit-autofill:focus {
+:is(.auth-body, .app-body, .landing-body) .scan-input:-webkit-autofill,
+:is(.auth-body, .app-body, .landing-body) .scan-input:-webkit-autofill:focus {
     -webkit-box-shadow: 0 0 0 1000px var(--ws-raised) inset;
     -webkit-text-fill-color: var(--ws-text);
     caret-color: var(--ws-text);
@@ -558,21 +558,21 @@ body {
     color: var(--ws-text);
 }
 
-:is(.auth-body, .app-body) .scan-input {
+:is(.auth-body, .app-body, .landing-body) .scan-input {
     background-color: var(--ws-raised);
     border: 1px solid var(--ws-border);
     border-radius: 2px;
     color: var(--ws-text);
 }
 
-:is(.auth-body, .app-body) .scan-input:focus,
-:is(.auth-body, .app-body) .scan-button:focus-visible,
-:is(.auth-body, .app-body) a:focus-visible {
+:is(.auth-body, .app-body, .landing-body) .scan-input:focus,
+:is(.auth-body, .app-body, .landing-body) .scan-button:focus-visible,
+:is(.auth-body, .app-body, .landing-body) a:focus-visible {
     outline: 2px solid var(--ws-link);
     outline-offset: 1px;
 }
 
-:is(.auth-body, .app-body) .scan-button {
+:is(.auth-body, .app-body, .landing-body) .scan-button {
     background-color: var(--ws-accent);
     border: 1px solid var(--ws-accent-border);
     border-radius: 2px;
@@ -586,7 +586,7 @@ body {
     margin: -8px 0 12px 0;
 }
 
-:is(.auth-body, .app-body) .form-error {
+:is(.auth-body, .app-body, .landing-body) .form-error {
     background-color: #2a1418;
     border: 1px solid var(--color-fail);
     border-radius: 2px;
@@ -677,7 +677,8 @@ body {
 /* App pages (dashboard): same --ws-* tokens as the auth page.
    Flat cards, 1px borders, 2px corners. Motion runs once on load (cards fade in, gauge, rings
    and bars fill, numbers count up); hover states change instantly with no transitions. */
-.app-body {
+.app-body,
+.landing-body {
     --ws-pass: #9cc67a;
     --ws-warn: #d9b25f;
     --ws-fail: #e0806f;
@@ -1398,7 +1399,9 @@ body {
 }
 
 .app-body .skeleton-line,
-.app-body .skeleton-row {
+.app-body .skeleton-row,
+.landing-body .skeleton-line,
+.landing-body .skeleton-row {
     background-color: var(--ws-raised);
 }
 
@@ -1790,5 +1793,148 @@ body {
 @media (prefers-reduced-motion: reduce) {
     .landing-hero {
         animation: none;
+    }
+}
+
+/* Scan box on the landing page */
+.landing-scan {
+    flex-wrap: nowrap;
+    max-width: 640px;
+    margin-bottom: 4px;
+}
+
+.landing-body .scan-input {
+    flex: 1;
+    min-width: 0;
+    padding: 14px 16px;
+}
+
+.landing-body .scan-button {
+    padding: 14px 28px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.landing-body .scan-button:disabled {
+    opacity: 0.7;
+    cursor: progress;
+}
+
+.landing-body .form-error {
+    max-width: 640px;
+}
+
+.landing-skeleton {
+    margin-bottom: 48px;
+}
+
+/* Results page (dark), used both inside the app shell and on the public layout */
+.results {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.results-public {
+    padding: 40px 0 24px;
+}
+
+.results-target h1 {
+    margin: 0;
+    font-size: 26px;
+    overflow-wrap: anywhere;
+}
+
+.results-target p {
+    margin: 4px 0 20px;
+    color: var(--ws-muted);
+    font-size: 14px;
+}
+
+.results-scores {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.results-score {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 180px;
+    padding: 16px 20px;
+    background-color: var(--ws-raised);
+    border: 1px solid var(--ws-border);
+    border-radius: 2px;
+}
+
+.results-rating {
+    color: var(--tone);
+}
+
+.results .score-note {
+    color: var(--ws-muted);
+}
+
+.results-download {
+    display: inline-block;
+    margin-top: 4px;
+    text-decoration: none;
+}
+
+.results-signup {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px 32px;
+    margin-top: 8px;
+    padding: 20px;
+    background-color: var(--ws-raised);
+    border: 1px solid var(--ws-accent);
+    border-radius: 2px;
+}
+
+.results-signup h2 {
+    margin: 0 0 4px;
+    font-size: 17px;
+}
+
+.results-signup p {
+    max-width: 520px;
+    margin: 0;
+    color: var(--ws-muted);
+    font-size: 14px;
+}
+
+.results-table td {
+    white-space: normal;
+    vertical-align: top;
+}
+
+.results-table td:first-child {
+    max-width: none;
+    min-width: 260px;
+}
+
+.results-table .finding-description {
+    margin-top: 6px;
+    color: var(--ws-muted);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.results-again {
+    margin: 0;
+    font-size: 14px;
+}
+
+@media (max-width: 560px) {
+    .landing-scan {
+        flex-wrap: wrap;
+    }
+
+    .landing-body .scan-button {
+        width: 100%;
     }
 }

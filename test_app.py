@@ -11,6 +11,7 @@ os.environ["TURSO_DATABASE_URL"] = ""
 os.environ["TURSO_AUTH_TOKEN"] = ""
 os.environ["SQLITE_PATH"] = os.path.join(tempfile.mkdtemp(), "test.db")
 
+import app as app_module  # noqa: E402
 import scanner  # noqa: E402
 from app import app  # noqa: E402
 from db import db  # noqa: E402
@@ -38,7 +39,7 @@ def main():
     page = r.get_data(as_text=True)
     assert r.status_code == 200 and "What WebSecure checks" in page and 'type="password"' not in page
     assert "/terms" in page and "/privacy" in page and "/register" in page
-    assert c.get("/history").headers["Location"].endswith("/login")  # private pages still need login
+    assert c.get("/history").headers["Location"].endswith("/login?next=/history")  # private pages still need login
 
     # CSRF: a POST without the token, or with a wrong one, is rejected
     assert c.post("/login", data={"email": "a@b.co", "password": "x"}).status_code == 400
@@ -113,6 +114,50 @@ def main():
         assert FlakyHTTP.calls == 2 and cur.lastrowid == 42 and conn.in_transaction
     finally:
         turso_http.http.client.HTTPSConnection = real_http
+
+    # Anonymous scanning: scan without an account, see the result, sign up to keep it and get the PDF.
+    fake = {"target_url": "https://example.com", "security_score": 70, "risk_level": "Moderate", "findings": [
+        {"header_name": "Content-Security-Policy", "status": "FAIL", "severity": "High",
+         "description": "Content-Security-Policy header is missing.", "recommendation": "Add one."},
+    ]}
+    real_scan = scanner.scan
+    scanner.scan = lambda url: dict(fake, target_url=url)
+    app_module._anon_scan_times.clear()
+    try:
+        visitor = app.test_client()
+        r = visitor.post("/scan", data={"target_url": "https://example.com", "csrf_token": token(visitor, "/")})
+        assert r.status_code == 302, r.status_code
+        result_path = r.headers["Location"]
+        page = visitor.get(result_path).get_data(as_text=True)
+        assert "Create a free account" in page and "Download PDF" not in page and "Content-Security-Policy" in page
+        pdf_redirect = visitor.get(result_path.replace("/results/", "/report/download/"))
+        assert "/login?next=" in pdf_redirect.headers["Location"]
+
+        # Another browser cannot open that anonymous scan
+        assert app.test_client().get(result_path).status_code == 404
+
+        # Signing up returns to the result, moves the scan into the new account, and unlocks the PDF
+        r = visitor.post("/register", data={"name": "Vee", "email": "visitor@example.com", "password": "password123",
+                                            "next": result_path, "csrf_token": token(visitor, "/register")})
+        assert r.headers["Location"] == result_path, r.headers["Location"]
+        assert "Download PDF" in visitor.get(result_path).get_data(as_text=True)
+        assert visitor.get(result_path.replace("/results/", "/report/download/")).mimetype == "application/pdf"
+        assert "example.com" in visitor.get("/history").get_data(as_text=True)
+
+        # next= only accepts paths on this site
+        other = app.test_client()
+        r = other.post("/register", data={"name": "Ow", "email": "ow@example.com", "password": "password123",
+                                          "next": "https://evil.example/", "csrf_token": token(other, "/register")})
+        assert r.headers["Location"] == "/", r.headers["Location"]
+
+        # Anonymous visitors get 5 scans per hour; the 6th is refused
+        app_module._anon_scan_times.clear()
+        limited = app.test_client()
+        codes = [limited.post("/scan", data={"target_url": "https://example.com", "csrf_token": token(limited, "/")}).status_code
+                 for _ in range(6)]
+        assert codes == [302] * 5 + [429], codes
+    finally:
+        scanner.scan = real_scan
 
     print("OK: app checks passed")
 

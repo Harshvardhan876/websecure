@@ -1,6 +1,7 @@
 import hmac
 import secrets
-from collections import Counter
+import time
+from collections import Counter, defaultdict
 from functools import wraps
 from urllib.parse import urlparse
 
@@ -20,6 +21,7 @@ import models  # noqa: E402  (registers User/Scan/Finding on db.metadata before 
 from models import (  # noqa: E402
     EmailAlreadyRegisteredError,
     authenticate,
+    claim_scans,
     create_user,
     get_scan_by_id,
     get_scans_for_user,
@@ -78,9 +80,64 @@ def login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
         if "user_id" not in session:
-            return redirect(url_for("login"))
+            return redirect(url_for("login", next=request.path))
         return view(*args, **kwargs)
     return wrapped
+
+
+def safe_next(default="/"):
+    """The ?next= page to return to after login, only if it is a path on this site (no open redirect)."""
+    target = request.values.get("next", "")
+    if target.startswith("/") and not target.startswith("//") and "\\" not in target:
+        return target
+    return default
+
+
+def current_user():
+    return db.session.get(models.User, session["user_id"]) if "user_id" in session else None
+
+
+# Scans run without an account are saved with user_id NULL; their IDs live in the visitor's
+# signed session cookie, so only that browser can open them until they log in and claim them.
+ANON_SCANS = "anon_scans"
+
+
+def can_view(scan):
+    if scan.user_id is not None:
+        return scan.user_id == session.get("user_id")
+    return scan.scan_id in session.get(ANON_SCANS, [])
+
+
+# Each scan launches a real browser, so anonymous visitors get a small hourly allowance.
+# ponytail: in-memory and per process; resets on restart and is not shared between workers.
+# Move it to the database if Render ever runs more than one worker.
+ANON_SCAN_LIMIT = 5
+ANON_SCAN_WINDOW_SECONDS = 3600
+_anon_scan_times = defaultdict(list)
+
+
+def client_ip():
+    # Render sits behind Cloudflare, which sets CF-Connecting-IP and overwrites any value a client sends.
+    return request.headers.get("CF-Connecting-IP") or request.remote_addr or "unknown"
+
+
+def anon_scan_allowed():
+    now = time.monotonic()
+    key = client_ip()
+    recent = [t for t in _anon_scan_times[key] if now - t < ANON_SCAN_WINDOW_SECONDS]
+    allowed = len(recent) < ANON_SCAN_LIMIT
+    if allowed:
+        recent.append(now)
+    _anon_scan_times[key] = recent
+    return allowed
+
+
+def log_in(user):
+    """Start a fresh session for the user and move any scans they ran before logging in into their account."""
+    pending = session.get(ANON_SCANS, [])
+    session.clear()  # drops any session ID an attacker planted (session fixation)
+    session["user_id"] = user.id
+    claim_scans(pending, user.id)
 
 
 def dashboard_stats(scans):
@@ -130,30 +187,38 @@ def index():
 
 
 @app.route("/scan", methods=["POST"])
-@login_required
 def run_scan():
     target_url = request.form.get("target_url", "").strip()
+    logged_in = "user_id" in session
+
+    def scan_page(error, status):
+        page = render_index(error=error) if logged_in else render_template("landing.html", error=error)
+        return page, status
+
+    if not logged_in and not anon_scan_allowed():
+        return scan_page(
+            f"You have used your {ANON_SCAN_LIMIT} free scans for this hour. Create a free account to keep scanning.", 429
+        )
 
     try:
         result = scanner.scan(target_url)
     except InvalidURLError as e:
-        return render_index(error=str(e)), 400
+        return scan_page(str(e), 400)
     except ScanError:
-        return render_index(
-            error="Could not reach that URL. Check it's correct and reachable, then try again."
-        ), 400
+        return scan_page("Could not reach that URL. Check it's correct and reachable, then try again.", 400)
 
-    saved = save_scan_result(result, user_id=session["user_id"])
+    saved = save_scan_result(result, user_id=session.get("user_id"))
+    if not logged_in:
+        session[ANON_SCANS] = (session.get(ANON_SCANS, []) + [saved.scan_id])[-20:]
     return redirect(url_for("results", scan_id=saved.scan_id))
 
 
 @app.route("/results/<int:scan_id>")
-@login_required
 def results(scan_id):
     scan = get_scan_by_id(scan_id)
-    if scan is None or scan.user_id != session["user_id"]:
+    if scan is None or not can_view(scan):
         abort(404)
-    return render_template("results.html", scan=scan)
+    return render_template("results.html", scan=scan, user=current_user())
 
 
 @app.route("/history")
@@ -197,9 +262,8 @@ def register():
         except EmailAlreadyRegisteredError:
             return render_template("auth.html", mode="register", error="That email is already registered."), 400
 
-        session.clear()
-        session["user_id"] = user.id
-        return redirect(url_for("index"))
+        log_in(user)
+        return redirect(safe_next())
 
     return render_template("auth.html", mode="register")
 
@@ -214,9 +278,8 @@ def login():
         if user is None:
             return render_template("auth.html", mode="login", error="Invalid email or password."), 401
 
-        session.clear()
-        session["user_id"] = user.id
-        return redirect(url_for("index"))
+        log_in(user)
+        return redirect(safe_next())
 
     return render_template("auth.html", mode="login")
 
@@ -224,7 +287,7 @@ def login():
 @app.route("/logout")
 def logout():
     session.pop("user_id", None)
-    return redirect(url_for("login"))
+    return redirect(url_for("index"))
 
 
 @app.route("/terms")
