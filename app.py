@@ -11,7 +11,7 @@ import scanner
 from config import Config
 from db import db, init_db
 from report import build_report_pdf, report_filename
-from scanner import FIX_EXAMPLES, InvalidURLError, ScanError
+from scanner import FIX_EXAMPLES, InvalidURLError, ScanError, points_for, server_config
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -178,6 +178,61 @@ def render_index(error=None):
     )
 
 
+def site_key(url):
+    """Same site and page, ignoring "www." and a trailing slash, so repeat scans of one page match."""
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower().removeprefix("www.")
+    return host + parsed.path.rstrip("/")
+
+
+def previous_scan(scan):
+    """The viewer's most recent earlier scan of the same page, or None."""
+    if scan.user_id is not None:
+        candidates = models.Scan.query.filter(models.Scan.user_id == scan.user_id)
+    else:
+        candidates = models.Scan.query.filter(
+            models.Scan.scan_id.in_(session.get(ANON_SCANS, [])), models.Scan.user_id.is_(None)
+        )
+    earlier = candidates.filter(models.Scan.scan_date < scan.scan_date).order_by(models.Scan.scan_date.desc()).limit(50)
+    key = site_key(scan.target_url)
+    return next((s for s in earlier if site_key(s.target_url) == key), None)
+
+
+STATUS_RANK = {"FAIL": 0, "WARNING": 1, "PASS": 2}
+
+
+def compare_scans(old, new):
+    before = {f.header_name: f.status for f in old.findings}
+    changes = []
+    for f in new.findings:
+        was = before.get(f.header_name)
+        if was and was != f.status:
+            changes.append({
+                "check": f.header_name, "was": was, "now": f.status,
+                "points": (points_for(f.header_name, f.status) or 0) - (points_for(f.header_name, was) or 0),
+                "better": STATUS_RANK.get(f.status, 1) > STATUS_RANK.get(was, 1),
+            })
+    return {"previous": old, "delta": new.security_score - old.security_score, "changes": changes}
+
+
+def recent_sites(user_id, limit=6):
+    """Distinct recently scanned addresses, newest first, for one-click rescans."""
+    seen, sites = set(), []
+    for s in get_scans_for_user(user_id, limit=40):
+        if site_key(s.target_url) not in seen:
+            seen.add(site_key(s.target_url))
+            sites.append(s.target_url)
+        if len(sites) == limit:
+            break
+    return sites
+
+
+def render_scan_page(error=None, status=200):
+    return render_template(
+        "scan.html", error=error, user=current_user(), recent=recent_sites(session["user_id"])
+    ), status
+
+
 @app.route("/")
 def index():
     # Visitors get a public page that explains the service; the dashboard is for logged-in users.
@@ -186,14 +241,19 @@ def index():
     return render_index()
 
 
-@app.route("/scan", methods=["POST"])
+@app.route("/scan", methods=["GET", "POST"])
 def run_scan():
-    target_url = request.form.get("target_url", "").strip()
     logged_in = "user_id" in session
+    if request.method == "GET":
+        # Visitors scan from the landing page; the New scan page is part of the logged-in app.
+        return render_scan_page() if logged_in else redirect(url_for("index"))
+
+    target_url = request.form.get("target_url", "").strip()
 
     def scan_page(error, status):
-        page = render_index(error=error) if logged_in else render_template("landing.html", error=error)
-        return page, status
+        if logged_in:
+            return render_scan_page(error, status)
+        return render_template("landing.html", error=error), status
 
     if not logged_in and not anon_scan_allowed():
         return scan_page(
@@ -218,7 +278,13 @@ def results(scan_id):
     scan = get_scan_by_id(scan_id)
     if scan is None or not can_view(scan):
         abort(404)
-    return render_template("results.html", scan=scan, user=current_user(), fixes=FIX_EXAMPLES)
+    previous = previous_scan(scan)
+    failing = {f.header_name for f in scan.findings if f.status != "PASS"}
+    return render_template(
+        "results.html", scan=scan, user=current_user(), fixes=FIX_EXAMPLES,
+        comparison=compare_scans(previous, scan) if previous else None,
+        config=server_config(failing),
+    )
 
 
 @app.route("/history")

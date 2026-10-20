@@ -58,7 +58,37 @@
         {% endif %}
     </section>
 
-    <section class="dash-card" style="--i: 1">
+    {% if comparison %}
+    <section class="dash-card compare-card" style="--i: 1">
+        <div class="dash-card-head">
+            <h2>Since your last scan of this page</h2>
+            <a href="/results/{{ comparison.previous.scan_id }}" class="dash-link">{{ comparison.previous.scan_date.strftime("%d %b %Y, %H:%M") }}</a>
+        </div>
+        <div class="compare-summary">
+            <span class="compare-scores">{{ comparison.previous.security_score }} <span aria-hidden="true">&rarr;</span><span class="visually-hidden">to</span> <strong>{{ scan.security_score }}</strong></span>
+            <span class="dash-chip {{ 'is-up' if comparison.delta > 0 else 'is-down' if comparison.delta < 0 else '' }}">{{ '+' if comparison.delta > 0 }}{{ comparison.delta }} points</span>
+        </div>
+        {% if comparison.changes %}
+        <ul class="compare-list">
+            {% for change in comparison.changes %}
+            <li class="{{ 'is-better' if change.better else 'is-worse' }}">
+                <span class="compare-check">{{ change.check }}</span>
+                <span class="compare-status">
+                    <span class="dash-pill tone-{{ tones.get(change.was, 'low') }}">{{ change.was }}</span>
+                    <span aria-hidden="true">&rarr;</span><span class="visually-hidden">to</span>
+                    <span class="dash-pill tone-{{ tones.get(change.now, 'low') }}">{{ change.now }}</span>
+                </span>
+                <span class="compare-points">{% if change.points %}{{ '+' if change.points > 0 }}{{ change.points }}{% else %}0{% endif %}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="dash-empty-text">No check changed. Every result is the same as last time.</p>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    <section class="dash-card" style="--i: 2">
         {% set statuses = scan.findings | map(attribute="status") | list %}
         <div class="dash-card-head results-findings-head">
             <h2>Findings</h2>
@@ -99,6 +129,26 @@
         </div>
         <p class="dash-empty-text" data-empty-for="findings-list" hidden>No findings with that status.</p>
     </section>
+
+    {% if config %}
+    <section class="dash-card config-card" style="--i: 3">
+        <div class="dash-card-head">
+            <h2>Fix everything at once</h2>
+            <span class="dash-hint">Adds every missing header in one paste</span>
+        </div>
+        <div class="config-tabs" data-tabs role="tablist" aria-label="Server type">
+            {% for server in config %}
+            <button type="button" role="tab" id="tab-{{ loop.index }}" aria-controls="panel-{{ loop.index }}" aria-selected="{{ 'true' if loop.first else 'false' }}" data-tab="panel-{{ loop.index }}">{{ server }}</button>
+            {% endfor %}
+        </div>
+        {% for server, snippet in config.items() %}
+        <div class="config-panel" role="tabpanel" id="panel-{{ loop.index }}" aria-labelledby="tab-{{ loop.index }}" {% if not loop.first %}hidden{% endif %}>
+            <button type="button" class="copy-button config-copy" data-copy="{{ snippet }}" aria-label="Copy {{ server }} configuration">Copy</button>
+            <pre><code>{{ snippet }}</code></pre>
+        </div>
+        {% endfor %}
+    </section>
+    {% endif %}
 
     <p class="results-again"><a href="/">Scan another website</a></p>
 </div>

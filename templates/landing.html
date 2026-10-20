@@ -3,7 +3,7 @@
 {% block title %}WebSecure - Check a website's security headers{% endblock %}
 
 {% block head_extra %}
-<meta name="description" content="WebSecure is a free, passive scanner that checks a website's security headers and cookie flags and gives a 0-100 hardening score with a PDF report. A university project.">
+<meta name="description" content="WebSecure is a free, passive scanner that checks a website's security headers and cookie flags and gives a 0-100 hardening score with a PDF report.">
 {% endblock %}
 
 {% block app_content %}
@@ -66,14 +66,6 @@
     </div>
 </section>
 
-<section class="landing-section landing-about" aria-labelledby="about-title">
-    <h2 id="about-title">About this project</h2>
-    <p>WebSecure is a student project built to show how security headers work. Scans run without an account store only the address scanned and its results. Accounts add your name, email and a hashed password. Read the <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a> for the details.</p>
-    <div class="landing-cta">
-        <a href="#target_url" class="landing-button">Scan a website</a>
-        <a href="/register" class="landing-link">Create a free account</a>
-    </div>
-</section>
 </div>
 
 <script nonce="{{ csp_nonce() }}">

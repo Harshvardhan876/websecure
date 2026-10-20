@@ -1,0 +1,67 @@
+{% extends "app_base.html" %}
+{% set active = "scan" %}
+
+{% block title %}WebSecure - New scan{% endblock %}
+{% block page_title %}New scan{% endblock %}
+{% block page_subtitle %}Check the security headers and cookie settings of any public website.{% endblock %}
+
+{% block app_content %}
+<section class="dash-card scan-start" id="scan-panel" style="--i: 0">
+    <h2>Which website do you want to check?</h2>
+    <p class="dash-empty-text">Enter the full address of the page, including https://. The scan loads it once in a real browser and reads its response headers. It usually takes a few seconds.</p>
+
+    {% if error %}
+    <p class="form-error" role="alert">{{ error }}</p>
+    {% endif %}
+
+    <form class="scan-form scan-start-form" action="/scan" method="POST" id="scan-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="target_url" class="visually-hidden">Website address</label>
+        <input type="url" id="target_url" name="target_url" class="scan-input" placeholder="https://example.com" value="{{ request.form.target_url }}" required autofocus>
+        <button type="submit" class="scan-button" id="scan-submit">Scan</button>
+    </form>
+
+    {% if recent %}
+    <div class="recent-sites">
+        <span class="dash-hint">Scan again:</span>
+        {% for url in recent %}
+        <button type="button" class="recent-site" data-scan-url="{{ url }}">{{ url.split('://', 1)[-1].rstrip('/') }}</button>
+        {% endfor %}
+    </div>
+    {% endif %}
+</section>
+
+<div id="dashboard-body">
+    <section class="dash-card scan-start-info" style="--i: 1">
+        <h2>What you get</h2>
+        <ol class="scan-start-list">
+            <li><strong>A score out of 100</strong> and a rating from Strong to Minimal.</li>
+            <li><strong>Eight checks</strong> with the exact value the server sent for each one.</li>
+            <li><strong>Fixes</strong> for each problem, plus ready-made config for nginx, Apache and Express.</li>
+            <li><strong>A comparison</strong> with your previous scan of the same page, and a PDF report.</li>
+        </ol>
+    </section>
+</div>
+
+{% include "_scan_progress.html" %}
+
+<script nonce="{{ csp_nonce() }}">
+(function () {
+    var form = document.getElementById("scan-form");
+    var input = document.getElementById("target_url");
+    form.addEventListener("submit", function () {
+        document.getElementById("scan-submit").disabled = true;
+        document.getElementById("scan-submit").textContent = "Scanning";
+        document.getElementById("dashboard-body").classList.add("is-hidden");
+        document.getElementById("skeleton-panel").classList.add("is-active");
+    });
+    // Recent-site buttons fill the box and start the scan, with the same progress panel.
+    document.querySelectorAll("[data-scan-url]").forEach(function (button) {
+        button.addEventListener("click", function () {
+            input.value = button.dataset.scanUrl;
+            form.requestSubmit();
+        });
+    });
+})();
+</script>
+{% endblock %}

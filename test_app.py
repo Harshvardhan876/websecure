@@ -163,6 +163,30 @@ def main():
         assert 'filename="WebSecure-report-example.com-' in pdf.headers["Content-Disposition"]
         assert pdf.data.startswith(b"%PDF") and b"WebSecure" in pdf.data
 
+        # Copy-paste server config for every failing header
+        assert "Fix everything at once" in page and "add_header Content-Security-Policy" in page
+
+        # New scan page: logged-in users get it, with their recent sites; visitors are sent to the landing page
+        scan_page = visitor.get("/scan").get_data(as_text=True)
+        assert "Which website do you want to check?" in scan_page and 'data-scan-url="https://example.com"' in scan_page
+        assert app.test_client().get("/scan").headers["Location"] == "/"
+        def reject(url):
+            raise scanner.InvalidURLError("URL must start with http:// or https://")
+        scanner.scan = reject
+        bad = visitor.post("/scan", data={"target_url": "not a url", "csrf_token": token(visitor, "/scan")})
+        bad_page = bad.get_data(as_text=True)
+        assert bad.status_code == 400 and "Which website do you want to check?" in bad_page and "must start with http" in bad_page
+
+        # Rescanning the same page (with www. and a trailing slash) compares against the previous scan
+        improved = dict(fake, security_score=90, findings=[dict(fake["findings"][0], status="PASS", severity="Info",
+                                                               description="The policy restricts scripts.",
+                                                               recommendation="No action needed.")])
+        scanner.scan = lambda url: dict(improved, target_url=url)
+        r = visitor.post("/scan", data={"target_url": "https://www.example.com/", "csrf_token": token(visitor, "/scan")})
+        page = visitor.get(r.headers["Location"]).get_data(as_text=True)
+        assert "Since your last scan of this page" in page and "+20 points" in page and "+20</span>" in page
+        assert "Fix everything at once" not in page  # nothing left to fix
+
         # Log out only via POST with a CSRF token; it shows a notification
         assert visitor.get("/logout").status_code == 405
         assert visitor.post("/logout").status_code == 400
