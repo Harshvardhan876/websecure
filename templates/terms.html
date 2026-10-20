@@ -1,20 +1,24 @@
-{% extends "base.html" %}
+{% extends "app_base.html" if user else "public_base.html" %}
 
 {% block title %}WebSecure - Terms of Service{% endblock %}
+{% block page_title %}Terms of Service{% endblock %}
+{% block page_subtitle %}Last updated October 2026.{% endblock %}
 
-{% block content %}
-<section class="scan-panel legal-page">
-    <h1>Terms of Service</h1>
+{% block app_content %}
+<section class="dash-card legal-page{{ ' legal-public' if not user }}">
+    {% if not user %}<h1>Terms of Service</h1>{% endif %}
 
     <h2>1. What WebSecure Does</h2>
-    <p>WebSecure is a passive security configuration assessment tool. It sends a single
-    safe HTTP GET request to a URL you provide and inspects the response headers and
-    cookies against a fixed, project-defined checklist. It does not attempt to exploit,
-    brute-force, or otherwise actively probe any target.</p>
+    <p>WebSecure is a passive security configuration assessment tool. It opens the URL you provide once,
+    in a real (headless) browser, the same way a normal visitor would, and checks the security headers
+    and cookie settings of that page against a fixed, project-defined checklist. It does not attempt to
+    exploit, brute-force, scan ports or files, or otherwise actively probe any target. Private and
+    internal network addresses are refused.</p>
 
     <h2>2. Your Responsibility</h2>
     <p>You are responsible for only scanning URLs you own or are authorized to test.
-    WebSecure does not verify authorization on your behalf.</p>
+    WebSecure does not verify authorization on your behalf. Visitors without an account
+    can run a limited number of scans per hour.</p>
 
     <h2>3. No Warranty</h2>
     <p>Findings are configuration observations, not proof of an exploitable vulnerability

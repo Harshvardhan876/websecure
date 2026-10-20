@@ -1,10 +1,12 @@
-{% extends "base.html" %}
+{% extends "app_base.html" if user else "public_base.html" %}
 
 {% block title %}WebSecure - Privacy Policy{% endblock %}
+{% block page_title %}Privacy Policy{% endblock %}
+{% block page_subtitle %}Last updated October 2026.{% endblock %}
 
-{% block content %}
-<section class="scan-panel legal-page">
-    <h1>Privacy Policy</h1>
+{% block app_content %}
+<section class="dash-card legal-page{{ ' legal-public' if not user }}">
+    {% if not user %}<h1>Privacy Policy</h1>{% endif %}
 
     <h2>1. Account Data</h2>
     <p>When you register, we store your name, email address, and a hashed password.

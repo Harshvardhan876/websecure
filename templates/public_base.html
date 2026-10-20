@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import logo, wordmark %}
 {# Layout for pages visitors see without logging in: the landing page, and scan results before sign-up.
    Child pages fill app_content, the same block name app_base.html uses, so one page can use either layout. #}
 
@@ -8,15 +9,16 @@
 <header class="landing-header">
     <div class="container landing-header-row">
         <a href="/" class="landing-brand">
-            <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-                <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                <path d="M12 7v5m0 3.2v.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-            <span>WebSecure</span>
+            {{ logo(36) }}
+            {{ wordmark() }}
         </a>
         <nav class="landing-nav" aria-label="Account">
+            {% if session.user_id %}
+            <a href="/" class="landing-button">Dashboard</a>
+            {% else %}
             <a href="{{ url_for('login', next=next_page) if next_page else '/login' }}">Sign in</a>
             <a href="{{ url_for('register', next=next_page) if next_page else '/register' }}" class="landing-button">Create account</a>
+            {% endif %}
         </nav>
     </div>
 </header>

@@ -5,13 +5,13 @@ from collections import Counter, defaultdict
 from functools import wraps
 from urllib.parse import urlparse
 
-from flask import Flask, Response, abort, g, redirect, render_template, request, session, url_for
+from flask import Flask, Response, abort, flash, g, redirect, render_template, request, session, url_for
 
 import scanner
 from config import Config
 from db import db, init_db
-from report import build_report_pdf
-from scanner import InvalidURLError, ScanError
+from report import build_report_pdf, report_filename
+from scanner import FIX_EXAMPLES, InvalidURLError, ScanError
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -137,7 +137,7 @@ def log_in(user):
     pending = session.get(ANON_SCANS, [])
     session.clear()  # drops any session ID an attacker planted (session fixation)
     session["user_id"] = user.id
-    claim_scans(pending, user.id)
+    return claim_scans(pending, user.id)
 
 
 def dashboard_stats(scans):
@@ -218,14 +218,14 @@ def results(scan_id):
     scan = get_scan_by_id(scan_id)
     if scan is None or not can_view(scan):
         abort(404)
-    return render_template("results.html", scan=scan, user=current_user())
+    return render_template("results.html", scan=scan, user=current_user(), fixes=FIX_EXAMPLES)
 
 
 @app.route("/history")
 @login_required
 def history():
-    scans = get_scans_for_user(session["user_id"])
-    return render_template("history.html", scans=scans)
+    scans = get_scans_for_user(session["user_id"], limit=None)
+    return render_template("history.html", scans=scans, user=current_user())
 
 
 @app.route("/report/download/<int:scan_id>")
@@ -240,7 +240,7 @@ def download_report(scan_id):
         pdf_bytes,
         mimetype="application/pdf",
         headers={
-            "Content-Disposition": f"attachment; filename=websecure-scan-{scan.scan_id}.pdf"
+            "Content-Disposition": f'attachment; filename="{report_filename(scan)}"'
         },
     )
 
@@ -262,7 +262,8 @@ def register():
         except EmailAlreadyRegisteredError:
             return render_template("auth.html", mode="register", error="That email is already registered."), 400
 
-        log_in(user)
+        claimed = log_in(user)
+        flash("Account created. Welcome to WebSecure!" + (" Your scan was saved to your account." if claimed else ""))
         return redirect(safe_next())
 
     return render_template("auth.html", mode="register")
@@ -278,26 +279,49 @@ def login():
         if user is None:
             return render_template("auth.html", mode="login", error="Invalid email or password."), 401
 
-        log_in(user)
+        claimed = log_in(user)
+        flash(f"Welcome back, {user.name}." + (" Your scan was saved to your account." if claimed else ""))
         return redirect(safe_next())
 
     return render_template("auth.html", mode="login")
 
 
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])
 def logout():
+    # POST with a CSRF token, so another site cannot log people out with a link or image.
     session.pop("user_id", None)
+    flash("You have been logged out.")
     return redirect(url_for("index"))
 
 
 @app.route("/terms")
 def terms():
-    return render_template("terms.html")
+    return render_template("terms.html", user=current_user())
 
 
 @app.route("/privacy")
 def privacy():
-    return render_template("privacy.html")
+    return render_template("privacy.html", user=current_user())
+
+
+ERROR_PAGES = {
+    400: ("Something went wrong with that request", "Go back, reload the page and try again."),
+    404: ("Page not found", "The page does not exist, or it belongs to another account."),
+    405: ("That action is not allowed here", "Use the buttons on the page instead of typing the address."),
+    500: ("Something went wrong on our side", "Please try again in a minute. If it keeps happening, the scan target may be causing it."),
+}
+
+
+@app.errorhandler(400)
+@app.errorhandler(404)
+@app.errorhandler(405)
+@app.errorhandler(500)
+def error_page(error):
+    code = getattr(error, "code", 500)
+    title, hint = ERROR_PAGES.get(code, ERROR_PAGES[500])
+    # abort(400, "...") passes a specific message, e.g. the expired-form text from check_csrf.
+    description = getattr(error, "description", None) if code == 400 else None
+    return render_template("error.html", code=code, title=title, hint=description or hint), code
 
 
 if __name__ == "__main__":

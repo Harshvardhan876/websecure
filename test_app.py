@@ -156,8 +156,26 @@ def main():
         codes = [limited.post("/scan", data={"target_url": "https://example.com", "csrf_token": token(limited, "/")}).status_code
                  for _ in range(6)]
         assert codes == [302] * 5 + [429], codes
+        # Results show a copyable example fix for failed checks; the PDF has a branded file name
+        page = visitor.get(result_path).get_data(as_text=True)
+        assert "fix-snippet" in page and 'data-copy="Content-Security-Policy:' in page
+        pdf = visitor.get(result_path.replace("/results/", "/report/download/"))
+        assert 'filename="WebSecure-report-example.com-' in pdf.headers["Content-Disposition"]
+        assert pdf.data.startswith(b"%PDF") and b"WebSecure" in pdf.data
+
+        # Log out only via POST with a CSRF token; it shows a notification
+        assert visitor.get("/logout").status_code == 405
+        assert visitor.post("/logout").status_code == 400
+        r = visitor.post("/logout", data={"csrf_token": token(visitor, "/history")}, follow_redirects=True)
+        assert "You have been logged out." in r.get_data(as_text=True)
     finally:
         scanner.scan = real_scan
+
+    # Friendly error page and public legal pages
+    r = app.test_client().get("/no-such-page")
+    assert r.status_code == 404 and "Page not found" in r.get_data(as_text=True)
+    for path in ("/terms", "/privacy"):
+        assert app.test_client().get(path).status_code == 200
 
     print("OK: app checks passed")
 

@@ -406,6 +406,28 @@ CHECKS = (
     ("Information Disclosure", 5, _check_disclosure, "Remove or obscure the Server and X-Powered-By headers to minimize reconnaissance data available to attackers."),
 )
 
+WEIGHTS = {name: weight for name, weight, _check, _rec in CHECKS}
+
+# A typical header line that fixes each check, shown on the results page and in the PDF.
+FIX_EXAMPLES = {
+    "Content-Security-Policy": "Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+    "Strict-Transport-Security": "Strict-Transport-Security: max-age=31536000; includeSubDomains",
+    "X-Frame-Options": "X-Frame-Options: DENY",
+    "Cookie Security": "Set-Cookie: session=<value>; Secure; HttpOnly; SameSite=Lax; Path=/",
+    "X-Content-Type-Options": "X-Content-Type-Options: nosniff",
+    "Referrer-Policy": "Referrer-Policy: strict-origin-when-cross-origin",
+    "Permissions-Policy": "Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()",
+    "Information Disclosure": "nginx:   server_tokens off;\nApache:  ServerTokens Prod\nExpress: app.disable('x-powered-by')",
+}
+
+
+def points_for(name, status):
+    """Points a finding earned, or None for rows that are not scored (HTTPS, Bot Protection, SSL)."""
+    weight = WEIGHTS.get(name)
+    if weight is None:
+        return None
+    return {"PASS": weight, "WARNING": weight // 2}.get(status, 0)
+
 
 def evaluate(response, ssl_warning):
     """Apply docs/03_SECURITY_METHODOLOGY.md. PASS earns the full weight, WARNING half, FAIL none."""
@@ -413,7 +435,7 @@ def evaluate(response, ssl_warning):
     score = 0
     for name, weight, check, recommendation in CHECKS:
         status, severity, description = check(response)
-        score += {"PASS": weight, "WARNING": weight // 2}.get(status, 0)
+        score += points_for(name, status)
         findings.append({
             "header_name": name, "status": status, "severity": severity,
             "description": description,

@@ -3,7 +3,7 @@
 
 {% block title %}WebSecure - Dashboard{% endblock %}
 {% block page_title %}Security Dashboard{% endblock %}
-{% block page_subtitle %}{% if user %}Welcome back, {{ user.name }}. {% endif %}Your security header posture at a glance.{% endblock %}
+{% block page_subtitle %}{% if user %}Hi {{ user.name }}. {% endif %}Your security header posture at a glance.{% endblock %}
 
 {% block app_content %}
 <section class="dash-card dash-scan" id="scan-panel">
@@ -182,34 +182,11 @@
 {% include "_scan_progress.html" %}
 
 <script nonce="{{ csp_nonce() }}">
-(function () {
-    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    // Count numbers up from 0. The final value is already in the HTML, so nothing breaks without JS.
-    if (!reduceMotion) {
-        document.querySelectorAll("[data-count]").forEach(function (el) {
-            var target = Number(el.dataset.count);
-            var start = performance.now();
-            el.textContent = "0";
-            (function tick(now) {
-                var t = Math.min((now - start) / 900, 1);
-                el.textContent = Math.round(target * (1 - Math.pow(1 - t, 3)));
-                if (t < 1) requestAnimationFrame(tick);
-            })(start);
-        });
-    }
-
-    // Gauge, rings and bars animate from empty to their value once this class lands.
-    requestAnimationFrame(function () {
-        requestAnimationFrame(function () { document.body.classList.add("is-ready"); });
-    });
-
-    document.getElementById("scan-form").addEventListener("submit", function () {
-        document.getElementById("scan-submit").disabled = true;
-        document.getElementById("scan-submit").textContent = "Scanning";
-        document.getElementById("dashboard-body").classList.add("is-hidden");
-        document.getElementById("skeleton-panel").classList.add("is-active");
-    });
-})();
+document.getElementById("scan-form").addEventListener("submit", function () {
+    document.getElementById("scan-submit").disabled = true;
+    document.getElementById("scan-submit").textContent = "Scanning";
+    document.getElementById("dashboard-body").classList.add("is-hidden");
+    document.getElementById("skeleton-panel").classList.add("is-active");
+});
 </script>
 {% endblock %}

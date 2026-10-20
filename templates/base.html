@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}WebSecure{% endblock %}</title>
     {% block head_extra %}{% endblock %}
+    <link rel="icon" href="{{ url_for('static', filename='logo.svg') }}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -12,16 +14,19 @@
     <header class="site-header">
         <div class="container header-row">
             <span class="brand">WebSecure</span>
-            {% if session.user_id %}
-            <span class="header-nav">
-                <a href="/" class="header-link">New scan</a>
-                <a href="/history" class="header-link">History</a>
-                <a href="/logout" class="header-link">Log out</a>
-            </span>
-            {% endif %}
         </div>
     </header>
     {% endblock %}
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="toast-stack" role="status" aria-live="polite">
+        {% for message in messages %}
+        <div class="toast"><span>{{ message }}</span><button type="button" aria-label="Dismiss">&times;</button></div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
 
     <main class="container">
         {% block content %}{% endblock %}
@@ -33,5 +38,6 @@
             <a href="/privacy">Privacy Policy</a>
         </div>
     </footer>
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </body>
 </html>

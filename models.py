@@ -113,12 +113,17 @@ def save_scan_result(scan_result, user_id=None):
 
 
 def claim_scans(scan_ids, user_id):
-    """Move scans run before login (user_id NULL) into the account that just logged in or registered."""
-    if scan_ids:
-        Scan.query.filter(Scan.scan_id.in_(scan_ids), Scan.user_id.is_(None)).update(
-            {"user_id": user_id}, synchronize_session=False
-        )
-        db.session.commit()
+    """Move scans run before login (user_id NULL) into the account that just logged in or registered.
+
+    Returns how many scans were moved.
+    """
+    if not scan_ids:
+        return 0
+    claimed = Scan.query.filter(Scan.scan_id.in_(scan_ids), Scan.user_id.is_(None)).update(
+        {"user_id": user_id}, synchronize_session=False
+    )
+    db.session.commit()
+    return claimed
 
 
 def get_scan_by_id(scan_id):

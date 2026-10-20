@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import logo, wordmark %}
 
 {% block title %}WebSecure - {{ "Log In" if mode == "login" else "Register" }}{% endblock %}
 
@@ -25,7 +26,10 @@
             <input type="email" id="login-email" name="email" class="scan-input" value="{{ request.form.email if mode == 'login' }}" autocomplete="email" required {% if mode == "login" %}autofocus{% endif %}>
 
             <label for="login-password" class="scan-label">Password</label>
-            <input type="password" id="login-password" name="password" class="scan-input" autocomplete="current-password" required>
+            <span class="pw-field">
+                <input type="password" id="login-password" name="password" class="scan-input" autocomplete="current-password" required>
+                <button type="button" class="pw-toggle" data-toggle-password="login-password" aria-label="Show password" aria-pressed="false">Show</button>
+            </span>
 
             <button type="submit" class="scan-button">Log in</button>
         </form>
@@ -51,7 +55,10 @@
             <input type="email" id="register-email" name="email" class="scan-input" value="{{ request.form.email if mode == 'register' }}" autocomplete="email" required>
 
             <label for="register-password" class="scan-label">Password</label>
-            <input type="password" id="register-password" name="password" class="scan-input" minlength="8" autocomplete="new-password" required>
+            <span class="pw-field">
+                <input type="password" id="register-password" name="password" class="scan-input" minlength="8" autocomplete="new-password" required>
+                <button type="button" class="pw-toggle" data-toggle-password="register-password" aria-label="Show password" aria-pressed="false">Show</button>
+            </span>
             <span class="field-hint">At least 8 characters.</span>
 
             <button type="submit" class="scan-button">Create account</button>
@@ -62,11 +69,8 @@
 
     {% set brand %}
     <div class="auth-brand">
-        <svg class="auth-logo" viewBox="0 0 24 24" width="28" height="28">
-            <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-            <path d="M12 7v5m0 3.2v.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-        </svg>
-        <span>WebSecure</span>
+        {{ logo(34) }}
+            {{ wordmark() }}
     </div>
     {% endset %}
     <div class="auth-blade" aria-hidden="true">
