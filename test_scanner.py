@@ -114,6 +114,21 @@ def main():
             pass
     assert scanner.is_public_host("8.8.8.8")
 
+    # An address typed without a scheme gets https:// (as a browser would); other schemes are still refused
+    assert scanner.validate_url("8.8.8.8") == "https://8.8.8.8"
+    assert scanner.validate_url("  http://8.8.8.8/  ") == "http://8.8.8.8/"
+    for bad in ("ftp://8.8.8.8", "javascript:alert(1)", "localhost", "127.0.0.1"):
+        try:
+            scanner.validate_url(bad)
+            raise AssertionError(f"{bad} should be refused")
+        except scanner.InvalidURLError:
+            pass
+
+    # Failed scans get a plain-language reason
+    assert "too long" in scanner.describe_scan_error("Page.goto: Timeout 10000ms exceeded.")
+    assert "could not be found" in scanner.describe_scan_error("net::ERR_NAME_NOT_RESOLVED at https://x.example")
+    assert "Could not load" in scanner.describe_scan_error("something unexpected")
+
     # Rating bands: 80 / 60 / 40 boundaries
     assert [scanner.classify_risk(s) for s in (80, 79, 60, 59, 40, 39)] == [
         "Strong", "Moderate", "Moderate", "Weak", "Weak", "Minimal"]

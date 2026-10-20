@@ -8,7 +8,7 @@
 {% block app_content %}
 <section class="dash-card scan-start" id="scan-panel" style="--i: 0">
     <h2>Which website do you want to check?</h2>
-    <p class="dash-empty-text">Enter the full address of the page, including https://. The scan loads it once in a real browser and reads its response headers. It usually takes a few seconds.</p>
+    <p class="dash-empty-text">Enter a web address, for example example.com or https://example.com/page. The scan loads it once in a real browser and reads its response headers. It usually takes a few seconds.</p>
 
     {% if error %}
     <p class="form-error" role="alert">{{ error }}</p>
@@ -17,7 +17,7 @@
     <form class="scan-form scan-start-form" action="/scan" method="POST" id="scan-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label for="target_url" class="visually-hidden">Website address</label>
-        <input type="url" id="target_url" name="target_url" class="scan-input" placeholder="https://example.com" value="{{ request.form.target_url }}" required autofocus>
+        <input type="text" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" id="target_url" name="target_url" class="scan-input" placeholder="example.com" value="{{ request.form.target_url }}" required autofocus>
         <button type="submit" class="scan-button" id="scan-submit">Scan</button>
     </form>
 

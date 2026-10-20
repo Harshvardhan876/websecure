@@ -19,7 +19,7 @@
     <form class="scan-form" action="/scan" method="POST" id="scan-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label for="target_url" class="visually-hidden">Target URL</label>
-        <input type="url" id="target_url" name="target_url" class="scan-input" placeholder="https://example.com" value="{{ request.form.target_url }}" required>
+        <input type="text" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" id="target_url" name="target_url" class="scan-input" placeholder="example.com" value="{{ request.form.target_url }}" required>
         <button type="submit" class="scan-button" id="scan-submit">Scan</button>
     </form>
 </section>

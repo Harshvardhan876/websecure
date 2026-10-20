@@ -11,7 +11,7 @@ import scanner
 from config import Config
 from db import db, init_db
 from report import build_report_pdf, report_filename
-from scanner import FIX_EXAMPLES, InvalidURLError, ScanError, points_for, server_config
+from scanner import FIX_EXAMPLES, InvalidURLError, ScanError, describe_scan_error, points_for, server_config
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -264,8 +264,8 @@ def run_scan():
         result = scanner.scan(target_url)
     except InvalidURLError as e:
         return scan_page(str(e), 400)
-    except ScanError:
-        return scan_page("Could not reach that URL. Check it's correct and reachable, then try again.", 400)
+    except ScanError as e:
+        return scan_page(describe_scan_error(e), 400)
 
     saved = save_scan_result(result, user_id=session.get("user_id"))
     if not logged_in:

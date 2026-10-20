@@ -1321,6 +1321,7 @@ body {
 }
 
 .dash-table-wrap {
+    position: relative; /* contains absolutely positioned screen-reader labels, which otherwise widen the page */
     overflow-x: auto;
 }
 
@@ -1463,7 +1464,13 @@ body {
         order: 3;
         flex-direction: row;
         flex-basis: 100%;
+        min-width: 0; /* let the menu shrink and scroll inside itself instead of widening the page */
         overflow-x: auto;
+    }
+
+    .app-body .app-nav a {
+        padding: 8px 10px;
+        gap: 8px;
     }
 
     .app-sidebar-foot {
