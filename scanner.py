@@ -407,18 +407,75 @@ CHECKS = (
 )
 
 WEIGHTS = {name: weight for name, weight, _check, _rec in CHECKS}
+CHECKS_ORDER = [name for name, _weight, _check, _rec in CHECKS]
 
-# A typical header line that fixes each check, shown on the results page and in the PDF.
-FIX_EXAMPLES = {
-    "Content-Security-Policy": "Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
-    "Strict-Transport-Security": "Strict-Transport-Security: max-age=31536000; includeSubDomains",
-    "X-Frame-Options": "X-Frame-Options: DENY",
+# Recommended header for each check that a single response header fixes.
+RECOMMENDED_HEADERS = {
+    "Content-Security-Policy": ("Content-Security-Policy", "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"),
+    "Strict-Transport-Security": ("Strict-Transport-Security", "max-age=31536000; includeSubDomains"),
+    "X-Frame-Options": ("X-Frame-Options", "DENY"),
+    "X-Content-Type-Options": ("X-Content-Type-Options", "nosniff"),
+    "Referrer-Policy": ("Referrer-Policy", "strict-origin-when-cross-origin"),
+    "Permissions-Policy": ("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()"),
+}
+
+# A typical line that fixes each check, shown on the results page and in the PDF.
+FIX_EXAMPLES = {check: f"{name}: {value}" for check, (name, value) in RECOMMENDED_HEADERS.items()} | {
     "Cookie Security": "Set-Cookie: session=<value>; Secure; HttpOnly; SameSite=Lax; Path=/",
-    "X-Content-Type-Options": "X-Content-Type-Options: nosniff",
-    "Referrer-Policy": "Referrer-Policy: strict-origin-when-cross-origin",
-    "Permissions-Policy": "Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()",
     "Information Disclosure": "nginx:   server_tokens off;\nApache:  ServerTokens Prod\nExpress: app.disable('x-powered-by')",
 }
+
+CSP_NOTE = (
+    "Test the Content-Security-Policy first: it can block scripts your site needs.",
+    "Send it as Content-Security-Policy-Report-Only until nothing breaks.",
+)
+
+
+def server_config(failing_checks):
+    """Copy-paste config that adds every missing header at once, for nginx, Apache and Express.
+
+    Returns {} when nothing needs fixing.
+    """
+    failing = [c for c in CHECKS_ORDER if c in failing_checks]
+    headers = [RECOMMENDED_HEADERS[c] for c in failing if c in RECOMMENDED_HEADERS]
+    hide_versions = "Information Disclosure" in failing
+    cookies = "Cookie Security" in failing
+    if not headers and not hide_versions and not cookies:
+        return {}
+    csp = "Content-Security-Policy" in failing
+
+    nginx = ["# Inside your server { } block"]
+    if csp:
+        nginx += [f"# {line}" for line in CSP_NOTE]
+    nginx += [f'add_header {name} "{value}" always;' for name, value in headers]
+    if hide_versions:
+        nginx.append("server_tokens off;")
+    if cookies:
+        nginx.append("# Cookies: add Secure; HttpOnly; SameSite=Lax where your application sets them.")
+
+    apache = ["# In your VirtualHost (needs mod_headers: a2enmod headers)"]
+    if csp:
+        apache += [f"# {line}" for line in CSP_NOTE]
+    apache += [f'Header always set {name} "{value}"' for name, value in headers]
+    if hide_versions:
+        apache += ["ServerSignature Off", "# In the main server config (httpd.conf), not a VirtualHost:", "ServerTokens Prod"]
+    if cookies:
+        apache.append("# Cookies: add Secure; HttpOnly; SameSite=Lax where your application sets them.")
+
+    express = ["// Before your routes"]
+    if csp:
+        express += [f"// {line}" for line in CSP_NOTE]
+    if hide_versions:
+        express.append('app.disable("x-powered-by");')
+    if headers:
+        express.append("app.use((req, res, next) => {")
+        express.append("  res.set({")
+        express += [f'    "{name}": "{value}",' for name, value in headers]
+        express += ["  });", "  next();", "});"]
+    if cookies:
+        express.append('// Cookies: res.cookie(name, value, { secure: true, httpOnly: true, sameSite: "lax" })')
+
+    return {"nginx": "\n".join(nginx), "Apache": "\n".join(apache), "Express": "\n".join(express)}
 
 
 def points_for(name, status):

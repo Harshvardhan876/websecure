@@ -74,6 +74,20 @@
         input.addEventListener("input", function () { applyFilters(input.dataset.searchFor); });
     });
 
+    // Tabs: buttons with data-tab="<panel id>" inside [data-tabs]; one panel visible at a time.
+    document.querySelectorAll("[data-tabs]").forEach(function (list) {
+        var tabs = list.querySelectorAll("[data-tab]");
+        tabs.forEach(function (tab) {
+            tab.addEventListener("click", function () {
+                tabs.forEach(function (t) {
+                    var selected = t === tab;
+                    t.setAttribute("aria-selected", String(selected));
+                    document.getElementById(t.dataset.tab).hidden = !selected;
+                });
+            });
+        });
+    });
+
     // Show / hide password
     document.querySelectorAll("[data-toggle-password]").forEach(function (button) {
         button.addEventListener("click", function () {

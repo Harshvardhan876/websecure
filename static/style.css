@@ -2530,3 +2530,191 @@ body {
 .ws-wordmark span {
     color: var(--ws-accent);
 }
+
+/* New scan page */
+.scan-start h2,
+.scan-start-info h2 {
+    margin: 0 0 6px;
+    font-size: 18px;
+}
+
+.scan-start .dash-empty-text {
+    margin-bottom: 18px;
+}
+
+.scan-start-form {
+    flex-wrap: nowrap;
+}
+
+.app-body .scan-start-form .scan-input {
+    padding: 14px 16px;
+    font-size: 17px;
+}
+
+.recent-sites {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.recent-site {
+    padding: 6px 12px;
+    background-color: var(--ws-raised);
+    border: 1px solid var(--ws-border);
+    border-radius: 2px;
+    color: var(--ws-text);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.recent-site:hover {
+    border-color: var(--ws-accent);
+}
+
+.scan-start-list {
+    margin: 12px 0 0;
+    padding-left: 22px;
+    color: var(--ws-muted);
+    line-height: 1.7;
+}
+
+.scan-start-list strong {
+    color: var(--ws-text);
+}
+
+/* Comparison with the previous scan of the same page */
+.compare-summary {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+
+.compare-scores {
+    color: var(--ws-muted);
+    font-size: 22px;
+    font-variant-numeric: tabular-nums;
+}
+
+.compare-scores strong {
+    color: var(--ws-text);
+}
+
+.compare-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--ws-border);
+}
+
+.compare-list li {
+    display: grid;
+    grid-template-columns: 1fr auto 56px;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--ws-border);
+    font-size: 14px;
+}
+
+.compare-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ws-muted);
+}
+
+.compare-points {
+    text-align: right;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.compare-list .is-better .compare-points {
+    color: var(--ws-pass);
+}
+
+.compare-list .is-worse .compare-points {
+    color: var(--ws-fail);
+}
+
+/* Copy-paste server configuration */
+.config-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--ws-border);
+}
+
+.config-tabs button {
+    margin-bottom: -1px;
+    padding: 8px 16px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 2px 2px 0 0;
+    color: var(--ws-muted);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.config-tabs button:hover {
+    color: var(--ws-text);
+}
+
+.config-tabs button[aria-selected="true"] {
+    background-color: var(--ws-bg);
+    border-color: var(--ws-border);
+    border-bottom-color: var(--ws-bg);
+    color: var(--ws-accent);
+}
+
+.config-panel {
+    position: relative;
+    padding: 46px 16px 16px;
+    background-color: var(--ws-bg);
+    border: 1px solid var(--ws-border);
+    border-top: 0;
+}
+
+.config-panel pre {
+    margin: 0;
+    overflow-x: auto;
+}
+
+.config-panel code {
+    color: var(--ws-accent);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    white-space: pre;
+}
+
+.config-copy {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+@media (max-width: 560px) {
+    .scan-start-form {
+        flex-wrap: wrap;
+    }
+
+    .app-body .scan-start-form .scan-button {
+        width: 100%;
+    }
+
+    .compare-list li {
+        grid-template-columns: 1fr auto;
+    }
+
+    .compare-status {
+        grid-column: 1 / -1;
+        order: 3;
+    }
+}
