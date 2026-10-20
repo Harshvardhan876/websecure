@@ -19,7 +19,13 @@ CHALLENGE_WAIT_SECONDS = 8
 # The scan reads only the page's own response headers and HTML. Images and web fonts never change
 # those, so skipping them saves CPU without changing any result. Scripts still run (bot challenges
 # need them). --disable-dev-shm-usage avoids crashes in containers with a small /dev/shm.
-BROWSER_ARGS = ["--disable-dev-shm-usage", "--blink-settings=imagesEnabled=false", "--disable-remote-fonts"]
+# --disable-features=site-per-process,... keeps embedded sites (iframes) in the page's own process,
+# which saved about 90 MB on YouTube. Site isolation protects a person's data across sites; these
+# throwaway contexts hold none, and the main document the checks read is unaffected.
+BROWSER_ARGS = [
+    "--disable-dev-shm-usage", "--blink-settings=imagesEnabled=false", "--disable-remote-fonts",
+    "--disable-features=site-per-process,IsolateOrigins",
+]
 # ponytail: Chromium is restarted every N scans to cap slow memory growth; tune if memory is tight.
 BROWSER_RECYCLE_AFTER_SCANS = 50
 
@@ -47,6 +53,26 @@ class InvalidURLError(ValueError):
     pass
 
 
+SCAN_ERROR_HINTS = (
+    ("Timeout", "The site took too long to respond. It may be slow or down right now; try again in a minute."),
+    ("ERR_NAME_NOT_RESOLVED", "That domain could not be found. Check the spelling."),
+    ("ERR_CONNECTION_REFUSED", "The site refused the connection. It may be down, or not serving that address."),
+    ("ERR_CONNECTION_RESET", "The site closed the connection. It may be blocking automated visits."),
+    ("ERR_CONNECTION_TIMED_OUT", "The site did not answer. It may be down or blocking automated visits."),
+    ("ERR_HTTP2_PROTOCOL_ERROR", "The site rejected the browser connection. Some sites block automated visits."),
+    ("ERR_CERT", "The site's HTTPS certificate could not be used, even with verification turned off."),
+    ("ERR_SSL", "The site's HTTPS setup could not be negotiated."),
+    ("private or internal", "The site redirected to a private or internal address, so it cannot be scanned."),
+)
+
+
+def describe_scan_error(error):
+    """A plain-language reason for a failed scan, based on the browser's error text."""
+    text = str(error)
+    return next((hint for marker, hint in SCAN_ERROR_HINTS if marker in text),
+                "Could not load that website. Check the address and that the site is up, then try again.")
+
+
 def is_public_host(hostname):
     """True only if every address the host resolves to is on the public internet.
 
@@ -61,8 +87,14 @@ def is_public_host(hostname):
 
 
 def validate_url(url):
-    """Enforce http/https, a plausible domain, and a public (non-internal) address."""
-    parsed = urlparse(url.strip())
+    """Enforce http/https, a plausible domain, and a public (non-internal) address.
+
+    An address typed without a scheme ("youtube.com") gets https:// added, as a browser would.
+    """
+    url = url.strip()
+    if not re.match(r"^[a-z][a-z0-9+.-]*://", url, re.I):
+        url = "https://" + url
+    parsed = urlparse(url)
 
     if parsed.scheme not in ("http", "https"):
         raise InvalidURLError("URL must start with http:// or https://")
@@ -98,6 +130,14 @@ def _snapshot(response, text=""):
     )
 
 
+def _document_html(response):
+    """The HTML exactly as the server sent it; empty if the body is unavailable (e.g. a redirect)."""
+    try:
+        return response.text()
+    except PlaywrightError:
+        return ""
+
+
 def _load(browser, url, ignore_https_errors):
     # Headless Chromium identifies as "HeadlessChrome", and some sites (google.com) then omit
     # headers such as HSTS. Identify as the same Chrome version a real visitor would use.
@@ -118,21 +158,45 @@ def _load(browser, url, ignore_https_errors):
             if r.request.is_navigation_request() and r.frame == page.main_frame
             else None,
         )
-        page.goto(url, wait_until="domcontentloaded", timeout=NAVIGATION_TIMEOUT_MS)
-
-        # A challenge page reloads itself once its script passes, which adds a new
-        # document response. Poll until the latest document is the real page.
-        deadline = time.monotonic() + CHALLENGE_WAIT_SECONDS
-        while True:
+        started = time.monotonic()
+        page.goto(url, wait_until="commit", timeout=NAVIGATION_TIMEOUT_MS)
+        # The headers and HTML the server sent, captured the moment the response arrives. If the page
+        # then crashes or never finishes (YouTube can push Chromium past the 512 MB host), the scan
+        # uses this instead of failing outright.
+        server_only = _snapshot(documents[-1], _document_html(documents[-1]))
+        server_only.history = [_snapshot(r) for r in documents[:-1]]  # redirects, read while the page is alive
+        try:
+            # Normal path, unchanged: let the page load within the same time limit and read the DOM,
+            # which also catches settings scripts add (YouTube adds its referrer meta tag that way).
+            remaining_ms = NAVIGATION_TIMEOUT_MS - (time.monotonic() - started) * 1000
+            page.wait_for_load_state("domcontentloaded", timeout=max(remaining_ms, 1000))
+        except PlaywrightError:  # crashed or did not finish in time
+            final, partial = server_only, True
+        else:
+            partial = False
             try:
                 body = page.content()
-            except PlaywrightError:  # mid-navigation
+            except PlaywrightError:  # mid-navigation (e.g. reddit reloads itself right away), as before
                 body = ""
             final = _snapshot(documents[-1], body)
-            if not detect_bot_challenge(final) or time.monotonic() > deadline:
-                break
-            page.wait_for_timeout(300)
 
+        if not partial and detect_bot_challenge(final):
+            # A challenge page reloads itself once its script passes, which adds a new
+            # document response. Poll until the latest document is the real page.
+            deadline = time.monotonic() + CHALLENGE_WAIT_SECONDS
+            while True:
+                try:
+                    body = page.content()
+                except PlaywrightError:  # mid-navigation
+                    body = ""
+                final = _snapshot(documents[-1], body)
+                if not detect_bot_challenge(final) or time.monotonic() > deadline:
+                    break
+                page.wait_for_timeout(300)
+
+        final.partial = partial
+        if partial:
+            return final
         final.history = [_snapshot(r) for r in documents[:-1]]
         return final
     finally:
@@ -185,6 +249,7 @@ def _fetch_on_browser_thread(url):
         print(f"scan timing: browser {ready - started:.2f}s, page {done - ready:.2f}s, url {url}", file=sys.stderr, flush=True)
         return result
     except (PlaywrightError, IndexError) as e:
+        print(f"scan failed: {url}: {str(e).splitlines()[0] if str(e) else type(e).__name__}", file=sys.stderr, flush=True)
         browser = _browser_state["browser"]
         if browser is not None and not browser.is_connected():
             _browser_state["browser"] = None  # it crashed; launch a new one next scan
@@ -512,6 +577,13 @@ def evaluate(response, ssl_warning):
             "header_name": "Bot Protection", "status": "WARNING", "severity": "High",
             "description": f"This scan did not reach the real page: {block_reason}. The score reflects the block page, not the site's actual configuration.",
             "recommendation": "Treat this score as unreliable. The challenge did not clear within the wait window; run the scan again, or check the headers manually in a browser.",
+        })
+
+    if getattr(response, "partial", False):
+        findings.append({
+            "header_name": "Page Load", "status": "WARNING", "severity": "Info",
+            "description": "The page did not finish loading in time, so this result uses the headers and HTML the server sent. Settings that the page's own scripts add later (for example a referrer meta tag) are not included.",
+            "recommendation": "Usually caused by a very heavy page. Run the scan again; if the note stays, treat checks that scripts can change as unverified.",
         })
 
     if ssl_warning:
