@@ -1,0 +1,15 @@
+{% extends "public_base.html" %}
+
+{% block title %}WebSecure - {{ title }}{% endblock %}
+
+{% block app_content %}
+<section class="error-page">
+    <p class="error-code">{{ code }}</p>
+    <h1>{{ title }}</h1>
+    <p class="error-hint">{{ hint }}</p>
+    <div class="landing-cta">
+        <a href="/" class="landing-button">Go to the home page</a>
+        {% if session.user_id %}<a href="/history" class="landing-link">Your scan history</a>{% endif %}
+    </div>
+</section>
+{% endblock %}

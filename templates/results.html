@@ -20,7 +20,7 @@
         <div class="results-scores">
             <div class="results-score">
                 <span class="dash-stat-label">Score</span>
-                <span class="dash-stat-value">{{ scan.security_score }}<small>/100</small></span>
+                <span class="dash-stat-value"><span data-count="{{ scan.security_score }}">{{ scan.security_score }}</span><small>/100</small></span>
             </div>
             <div class="results-score tone-{{ band }}">
                 <span class="dash-stat-label">Header hardening</span>
@@ -28,10 +28,22 @@
             </div>
         </div>
 
+        <div class="results-bar tone-{{ band }}" style="--score: {{ scan.security_score }}" aria-hidden="true"><span></span></div>
+
         <p class="score-note">This score rates the security headers of this one page. It is not a full security audit and does not mean the site is vulnerable.</p>
 
+        {% set rescan %}
+        <form action="/scan" method="POST" data-busy="Scanning">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="target_url" value="{{ scan.target_url }}">
+            <button type="submit" class="ghost-button">Scan again</button>
+        </form>
+        {% endset %}
         {% if user %}
-        <a href="/report/download/{{ scan.scan_id }}" class="scan-button results-download">Download PDF</a>
+        <div class="results-actions">
+            <a href="/report/download/{{ scan.scan_id }}" class="scan-button results-download">Download PDF</a>
+            {{ rescan }}
+        </div>
         {% else %}
         <div class="results-signup">
             <div>
@@ -47,30 +59,45 @@
     </section>
 
     <section class="dash-card" style="--i: 1">
-        <div class="dash-card-head">
+        {% set statuses = scan.findings | map(attribute="status") | list %}
+        <div class="dash-card-head results-findings-head">
             <h2>Findings</h2>
-            <span class="dash-hint">{{ scan.findings | length }} checks</span>
+            <div class="filter-chips" data-filter-for="findings-list" role="group" aria-label="Filter findings">
+                <button type="button" data-filter="all" aria-pressed="true">All <span>{{ statuses | length }}</span></button>
+                <button type="button" data-filter="FAIL" aria-pressed="false" class="tone-fail">Failed <span>{{ statuses | select("equalto", "FAIL") | list | length }}</span></button>
+                <button type="button" data-filter="WARNING" aria-pressed="false" class="tone-warn">Warnings <span>{{ statuses | select("equalto", "WARNING") | list | length }}</span></button>
+                <button type="button" data-filter="PASS" aria-pressed="false" class="tone-pass">Passed <span>{{ statuses | select("equalto", "PASS") | list | length }}</span></button>
+            </div>
         </div>
         <div class="dash-table-wrap">
             <table class="dash-table results-table">
                 <thead>
                     <tr><th>Check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr>
                 </thead>
-                <tbody>
+                <tbody id="findings-list">
                     {% for finding in scan.findings %}
-                    <tr>
+                    <tr data-filter-value="{{ finding.status }}">
                         <td>
                             <strong>{{ finding.header_name }}</strong>
                             <div class="finding-description">{{ finding.description }}</div>
                         </td>
                         <td><span class="dash-pill tone-{{ tones.get(finding.status, 'low') }}">{{ finding.status }}</span></td>
                         <td>{{ finding.severity }}</td>
-                        <td>{{ finding.recommendation }}</td>
+                        <td>
+                            {{ finding.recommendation }}
+                            {% if finding.status != "PASS" and fixes.get(finding.header_name) %}
+                            <div class="fix-snippet">
+                                <code>{{ fixes[finding.header_name] }}</code>
+                                <button type="button" class="copy-button" data-copy="{{ fixes[finding.header_name] }}" aria-label="Copy example fix for {{ finding.header_name }}">Copy</button>
+                            </div>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        <p class="dash-empty-text" data-empty-for="findings-list" hidden>No findings with that status.</p>
     </section>
 
     <p class="results-again"><a href="/">Scan another website</a></p>

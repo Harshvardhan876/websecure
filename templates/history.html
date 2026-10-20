@@ -1,37 +1,60 @@
-{% extends "base.html" %}
+{% extends "app_base.html" %}
+{% set active = "history" %}
 
 {% block title %}WebSecure - Scan History{% endblock %}
+{% block page_title %}Scan history{% endblock %}
+{% block page_subtitle %}All your scans, newest first.{% endblock %}
 
-{% block content %}
-<section class="scan-panel">
-    <h1>Scan history</h1>
-    <p class="scan-subtitle">Your past scans, newest first.</p>
-
-    {% if scans %}
-    <table class="findings-table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Target</th>
-                <th>Score</th>
-                <th>Hardening</th>
-                <th>Report</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for scan in scans %}
-            <tr>
-                <td>{{ scan.scan_date.strftime("%Y-%m-%d %H:%M") }}</td>
-                <td><a href="/results/{{ scan.scan_id }}">{{ scan.target_url }}</a></td>
-                <td>{{ scan.security_score }}/100</td>
-                <td class="risk-{{ scan.risk_level.split(' ')[0].lower() }}">{{ scan.risk_level }}</td>
-                <td><a href="/report/download/{{ scan.scan_id }}">PDF</a></td>
-            </tr>
+{% block app_content %}
+{% if scans %}
+<section class="dash-card" style="--i: 0">
+    <div class="history-tools">
+        <label for="history-search" class="visually-hidden">Search scans</label>
+        <input type="search" id="history-search" class="scan-input history-search" placeholder="Search by website" data-search-for="history-list" autocomplete="off">
+        <div class="filter-chips" data-filter-for="history-list" role="group" aria-label="Filter by rating">
+            <button type="button" data-filter="all" aria-pressed="true">All <span>{{ scans | length }}</span></button>
+            {% for rating in ["Strong", "Moderate", "Weak", "Minimal"] %}
+            {% set count = scans | selectattr("risk_level", "equalto", rating) | list | length %}
+            <button type="button" data-filter="{{ rating }}" aria-pressed="false" class="tone-{{ rating | lower }}">{{ rating }} <span>{{ count }}</span></button>
             {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p>No scans yet. <a href="/">Run your first scan.</a></p>
-    {% endif %}
+        </div>
+    </div>
+
+    <div class="dash-table-wrap">
+        <table class="dash-table history-table">
+            <thead>
+                <tr><th>Target</th><th>Date</th><th>Score</th><th>Hardening</th><th><span class="visually-hidden">Actions</span></th></tr>
+            </thead>
+            <tbody id="history-list">
+                {% for scan in scans %}
+                {% set band = scan.risk_level.split(' ')[0].lower() %}
+                <tr data-filter-value="{{ scan.risk_level }}" data-search="{{ scan.target_url | lower }}">
+                    <td><a href="/results/{{ scan.scan_id }}">{{ scan.target_url }}</a></td>
+                    <td>{{ scan.scan_date.strftime("%Y-%m-%d %H:%M") }}</td>
+                    <td>
+                        <span class="score-meter tone-{{ band }}"><span style="width: {{ scan.security_score }}%"></span></span>
+                        {{ scan.security_score }}
+                    </td>
+                    <td><span class="dash-pill tone-{{ band }}">{{ scan.risk_level }}</span></td>
+                    <td class="history-actions">
+                        <a href="/report/download/{{ scan.scan_id }}">PDF</a>
+                        <form action="/scan" method="POST" data-busy="Scanning">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="target_url" value="{{ scan.target_url }}">
+                            <button type="submit" class="link-button">Scan again</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="dash-empty-text history-empty" data-empty-for="history-list" hidden>No scans match that search.</p>
 </section>
+{% else %}
+<section class="dash-card dash-empty">
+    <h2>No scans yet</h2>
+    <p class="dash-empty-text">Run your first scan from the <a href="/">dashboard</a>. Every scan you run appears here.</p>
+</section>
+{% endif %}
 {% endblock %}
